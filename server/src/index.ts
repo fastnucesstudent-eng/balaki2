@@ -28,12 +28,10 @@ app.use((req, res, next) => {
         const allowedOrigins = [
             'https://tarzify.com',
             'https://www.tarzify.com',
-            'https://backend.tarzify.com',
-            'http://localhost:5173',
-            'http://localhost:5000'
+            'https://backend.tarzify.com'
         ];
 
-        if (allowedOrigins.includes(origin) || origin.endsWith('.vercel.app')) {
+        if (allowedOrigins.includes(origin) || origin.endsWith('.vercel.app') || (process.env.NODE_ENV !== 'production' && origin.includes('localhost'))) {
             res.header('Access-Control-Allow-Origin', origin);
             res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS');
             res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With');
@@ -61,7 +59,7 @@ app.use(helmet({
             ...helmet.contentSecurityPolicy.getDefaultDirectives(),
             "script-src": scriptSrcDirectives,
             "img-src": ["'self'", "data:", "blob:", "https://images.unsplash.com", "https://res.cloudinary.com", "https://api.qrserver.com"],
-            "connect-src": ["'self'", "https://*.supabase.co", "https://backend.tarzify.com", "http://localhost:5000"],
+            "connect-src": ["'self'", "https://*.supabase.co", "https://backend.tarzify.com"],
             "style-src": ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
             "font-src": ["'self'", "https://fonts.gstatic.com"]
         }

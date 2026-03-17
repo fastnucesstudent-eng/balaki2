@@ -36,7 +36,7 @@ router.post('/notify-admin', async (req, res) => {
                         <img src="${bannerUrl}" style="width: 100%; max-width: 400px; border-radius: 10px;" alt="Banner Preview" />
                     </div>
                     <p>Please log in to the Admin Dashboard to approve or reject this request.</p>
-                    <a href="${process.env.FRONTEND_URL || 'http://localhost:5173'}/admin" style="display: inline-block; padding: 10px 20px; background-color: #f85606; color: white; text-decoration: none; border-radius: 5px; font-weight: bold;">Go to Admin Dashboard</a>
+                    <a href="${process.env.FRONTEND_URL || 'https://tarzify.com'}/admin" style="display: inline-block; padding: 10px 20px; background-color: #f85606; color: white; text-decoration: none; border-radius: 5px; font-weight: bold;">Go to Admin Dashboard</a>
                 </div>
             `
         });
@@ -70,7 +70,7 @@ router.post('/notify-merchant', async (req, res) => {
                     </div>
                     ${adminComment ? `<p><strong>Admin Feedback:</strong> ${adminComment}</p>` : ''}
                     <p>${isApproved ? 'Your banner is now scheduled to go live.' : 'You can revise your request based on the feedback and submit again.'}</p>
-                    <a href="${process.env.FRONTEND_URL || 'http://localhost:5173'}/merchant" style="display: inline-block; padding: 10px 20px; background-color: #f85606; color: white; text-decoration: none; border-radius: 5px; font-weight: bold;">View Dashboard</a>
+                    <a href="${process.env.FRONTEND_URL || 'https://tarzify.com'}/merchant" style="display: inline-block; padding: 10px 20px; background-color: #f85606; color: white; text-decoration: none; border-radius: 5px; font-weight: bold;">View Dashboard</a>
                 </div>
             `
         });

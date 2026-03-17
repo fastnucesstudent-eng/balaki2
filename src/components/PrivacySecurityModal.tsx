@@ -34,7 +34,7 @@ export const PrivacySecurityModal = ({ onClose }: { onClose: () => void }) => {
 
             if (!token) throw new Error("No active session found.");
 
-            const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+            const API_URL = import.meta.env.VITE_API_URL || 'https://backend.tarzify.com/api';
             const response = await fetch(`${API_URL}/update-password`, {
                 method: 'POST',
                 headers: {
