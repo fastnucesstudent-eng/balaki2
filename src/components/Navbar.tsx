@@ -215,11 +215,11 @@ export const Navbar = ({
                             className="fixed inset-0 bg-black/60 backdrop-blur-md z-[60] md:hidden"
                         />
                         <motion.div
-                            initial={{ x: '100%' }}
+                            initial={{ x: '-100%' }}
                             animate={{ x: 0 }}
-                            exit={{ x: '100%' }}
+                            exit={{ x: '-100%' }}
                             transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-                            className="fixed top-0 right-0 h-screen w-72 bg-background border-l border-white/10 z-[70] md:hidden p-5 flex flex-col gap-5 shadow-2xl"
+                            className="fixed top-0 left-0 h-screen w-72 bg-background border-r border-white/10 z-[70] md:hidden p-5 flex flex-col gap-5 shadow-2xl"
                         >
                             <div className="flex justify-between items-center">
                                 <span className="text-xl font-black italic tracking-tighter">MENU</span>

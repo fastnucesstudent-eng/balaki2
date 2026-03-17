@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import { Navbar } from './components/Navbar';
 import { Hero } from './components/Hero';
+import { HeroBanner } from './components/HeroBanner';
 import { ProductCard } from './components/ProductCard';
 import { CartDrawer } from './components/CartDrawer';
 import { useCartStore } from './stores/useCartStore';
@@ -23,12 +24,14 @@ import { TrackOrder } from './components/TrackOrder';
 import { ProfilePage } from './pages/ProfilePage';
 import { PolicyPage } from './pages/PolicyPage';
 import { CategorySection } from './components/CategorySection';
+import { Articles } from './components/Articles';
 import { SeoHiddenLinks } from './components/SeoHiddenLinks';
 import { Footer } from './components/Footer';
 import { SEO } from './components/SEO';
 import { ToastContainer } from './components/ToastContainer';
 import { ResetPassword } from './pages/ResetPassword';
 import { useToastStore } from './stores/useToastStore';
+import { RateProduct } from './pages/RateProduct.tsx';
 
 function App() {
     const [isCartOpen, setIsCartOpen] = useState(false);
@@ -44,6 +47,8 @@ function App() {
     const [searchQuery, setSearchQuery] = useState('');
     const [activeCategory, setActiveCategory] = useState('All');
     const [showResetPassword, setShowResetPassword] = useState(false);
+    const [showRateProduct, setShowRateProduct] = useState(false);
+    const [rateProductParams, setRateProductParams] = useState<any>(null);
 
     // Pixel-based card width so overflow scroll always triggers (% fills container exactly — no overflow)
     const getCardWidth = () => {
@@ -150,6 +155,20 @@ function App() {
             setShowCheckout(hash === '#checkout');
             setShowProfile(hash === '#profile');
             setShowProfile(hash === '#profile');
+            if (hash.startsWith('#rate-product')) {
+                setShowRateProduct(true);
+                const params = new URLSearchParams(hash.split('?')[1]);
+                const order_id = params.get('order_id');
+                const product_id = params.get('product_id');
+                const user_id = params.get('user_id');
+                const rating = params.get('rating');
+                const sig = params.get('sig');
+                setRateProductParams({ order_id, product_id, user_id, rating, sig });
+            } else {
+                setShowRateProduct(false);
+                setRateProductParams(null);
+            }
+
             if (hash.startsWith('#track-order')) {
                 setShowTrackOrder(true);
                 const params = new URLSearchParams(hash.split('?')[1]);
@@ -219,6 +238,9 @@ function App() {
         if (showAdmin && role === 'admin') return <AdminDashboard />;
         if (showMerchant && (role === 'merchant' || role === 'admin')) return <MerchantDashboard />;
         if (showResetPassword) return <ResetPassword onComplete={() => window.location.hash = ''} />;
+        if (showRateProduct && rateProductParams) {
+            return <RateProduct params={rateProductParams} onComplete={() => window.location.hash = ''} />;
+        }
 
         if (viewProductId || window.location.hash.startsWith('#product/')) {
             const product = products.find(p => p.id === viewProductId);
@@ -278,6 +300,7 @@ function App() {
         return (
             <main className="bg-gray-50/50 dark:bg-zinc-950 min-h-screen pb-20">
                 <Hero />
+                <HeroBanner />
                 <CategorySection activeCategory={activeCategory} onCategoryChange={setActiveCategory} />
 
                 <section className="py-8 md:py-12 px-5 max-w-7xl mx-auto" id="catalog">
@@ -431,6 +454,7 @@ function App() {
             <SEO />
             {renderContent()}
             <SeoHiddenLinks />
+            <Articles />
             <Footer />
             <CartDrawer isOpen={isCartOpen} onClose={() => setIsCartOpen(false)} />
             {showTrackOrder && <TrackOrder initialOrderId={trackOrderId || undefined} onClose={() => window.location.hash = ''} />}

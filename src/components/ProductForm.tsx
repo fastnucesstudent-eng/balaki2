@@ -37,7 +37,9 @@ export const ProductForm = ({ productId, onClose, onSuccess }: ProductFormProps)
         dynamic_attributes: {} as Record<string, string[]>,
         pricing_matrix: [] as any[],
         avg_rating: '0.0',
-        total_reviews: '0'
+        total_reviews: '0',
+        sale_percentage: '0',
+        is_free_delivery: false
     });
 
     const widgetRef = useRef<any>(null);
@@ -165,6 +167,8 @@ export const ProductForm = ({ productId, onClose, onSuccess }: ProductFormProps)
                     pricing_matrix: data.pricing_matrix || [],
                     avg_rating: String(data.avg_rating ?? '0.0'),
                     total_reviews: String(data.total_reviews ?? '0'),
+                    sale_percentage: String(data.sale_percentage ?? '0'),
+                    is_free_delivery: data.is_free_delivery ?? false,
                 });
                 setImageUrls(data.image_urls || (data.image_url ? [data.image_url] : []));
             } catch (err: any) {
@@ -343,7 +347,9 @@ export const ProductForm = ({ productId, onClose, onSuccess }: ProductFormProps)
                 dynamic_attributes: formData.dynamic_attributes,
                 pricing_matrix: formData.pricing_matrix,
                 avg_rating: parseFloat(formData.avg_rating || '0'),
-                total_reviews: parseInt(formData.total_reviews || '0')
+                total_reviews: parseInt(formData.total_reviews || '0'),
+                sale_percentage: parseFloat(formData.sale_percentage || '0'),
+                is_free_delivery: formData.is_free_delivery
             };
 
             let query;
@@ -485,62 +491,90 @@ export const ProductForm = ({ productId, onClose, onSuccess }: ProductFormProps)
                                 </div>
                             </div>
 
-                            <div className="grid grid-cols-3 gap-4">
-                                <div>
-                                    <label className="text-[10px] font-black uppercase tracking-[0.2em] opacity-30 px-1">Price</label>
-                                    <div className="relative mt-2">
-                                        <span className="absolute left-4 top-1/2 -translate-y-1/2 text-xs font-black opacity-30">Rs</span>
+                                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                                    <div>
+                                        <label className="text-[10px] font-black uppercase tracking-[0.2em] opacity-30 px-1">Price</label>
+                                        <div className="relative mt-2">
+                                            <span className="absolute left-4 top-1/2 -translate-y-1/2 text-xs font-black opacity-30">Rs</span>
+                                            <input
+                                                required
+                                                type="number"
+                                                value={formData.price}
+                                                onChange={e => setFormData({ ...formData, price: e.target.value })}
+                                                className="w-full bg-white/[0.03] border border-white/5 rounded-2xl p-4 pl-10 outline-none focus:border-primary/50 transition-colors font-bold"
+                                                placeholder="0"
+                                            />
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <label className="text-[10px] font-black uppercase tracking-[0.2em] opacity-30 px-1">MSRP</label>
+                                        <div className="relative mt-2">
+                                            <span className="absolute left-4 top-1/2 -translate-y-1/2 text-xs font-black opacity-30">Rs</span>
+                                            <input
+                                                type="number"
+                                                value={formData.compare_at_price}
+                                                onChange={e => setFormData({ ...formData, compare_at_price: e.target.value })}
+                                                className="w-full bg-white/[0.03] border border-white/5 rounded-2xl p-4 pl-10 outline-none focus:border-primary/50 transition-colors font-bold"
+                                                placeholder="0"
+                                            />
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <label className="text-[10px] font-black uppercase tracking-[0.2em] opacity-30 px-1">Sale %</label>
+                                        <input
+                                            type="number"
+                                            value={formData.sale_percentage}
+                                            onChange={e => {
+                                                const pct = parseFloat(e.target.value) || 0;
+                                                const msrp = parseFloat(formData.compare_at_price) || parseFloat(formData.price) || 0;
+                                                const newPrice = msrp > 0 ? (msrp * (1 - pct / 100)).toFixed(0) : formData.price;
+                                                setFormData({ ...formData, sale_percentage: e.target.value, price: newPrice });
+                                            }}
+                                            className="w-full bg-white/[0.03] border border-white/5 rounded-2xl p-4 outline-none focus:border-primary/50 transition-colors font-bold mt-2"
+                                            placeholder="0"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="text-[10px] font-black uppercase tracking-[0.2em] opacity-30 px-1">Stock</label>
                                         <input
                                             required
                                             type="number"
-                                            value={formData.price}
-                                            onChange={e => setFormData({ ...formData, price: e.target.value })}
-                                            className="w-full bg-white/[0.03] border border-white/5 rounded-2xl p-4 pl-10 outline-none focus:border-primary/50 transition-colors font-bold"
+                                            value={formData.stock}
+                                            onChange={e => setFormData({ ...formData, stock: e.target.value })}
+                                            readOnly={formData.pricing_matrix.length > 0}
+                                            className={`w-full bg-white/[0.03] border border-white/5 rounded-2xl p-4 outline-none transition-colors font-bold mt-2 ${formData.pricing_matrix.length > 0 ? 'opacity-50 cursor-not-allowed' : 'focus:border-primary/50'}`}
                                             placeholder="0"
                                         />
                                     </div>
                                 </div>
-                                <div>
-                                    <label className="text-[10px] font-black uppercase tracking-[0.2em] opacity-30 px-1">MSRP</label>
-                                    <div className="relative mt-2">
-                                        <span className="absolute left-4 top-1/2 -translate-y-1/2 text-xs font-black opacity-30">Rs</span>
-                                        <input
-                                            type="number"
-                                            value={formData.compare_at_price}
-                                            onChange={e => setFormData({ ...formData, compare_at_price: e.target.value })}
-                                            className="w-full bg-white/[0.03] border border-white/5 rounded-2xl p-4 pl-10 outline-none focus:border-primary/50 transition-colors font-bold"
-                                            placeholder="0"
-                                        />
-                                    </div>
-                                </div>
-                                <div>
-                                    <label className="text-[10px] font-black uppercase tracking-[0.2em] opacity-30 px-1">Inventory</label>
-                                    <input
-                                        required
-                                        type="number"
-                                        value={formData.stock}
-                                        onChange={e => setFormData({ ...formData, stock: e.target.value })}
-                                        readOnly={formData.pricing_matrix.length > 0}
-                                        className={`w-full bg-white/[0.03] border border-white/5 rounded-2xl p-4 outline-none transition-colors font-bold mt-2 ${formData.pricing_matrix.length > 0 ? 'opacity-50 cursor-not-allowed' : 'focus:border-primary/50'}`}
-                                        placeholder="0"
-                                    />
-                                    {formData.pricing_matrix.length > 0 && (
-                                        <p className="text-[8px] font-black text-primary uppercase mt-1 px-1">Managed via Matrix</p>
-                                    )}
-                                </div>
-                            </div>
 
-                            <div className="flex items-center gap-4 bg-white/[0.02] border border-white/5 p-4 rounded-2xl">
-                                <div className={`w-12 h-6 rounded-full relative cursor-pointer transition-colors ${formData.is_returnable ? 'bg-primary' : 'bg-white/10'}`}
-                                    onClick={() => setFormData(prev => ({ ...prev, is_returnable: !prev.is_returnable }))}>
-                                    <motion.div
-                                        animate={{ x: formData.is_returnable ? 26 : 4 }}
-                                        className="absolute top-1 w-4 h-4 bg-white rounded-full shadow-sm"
-                                    />
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="flex items-center gap-4 bg-white/[0.02] border border-white/5 p-4 rounded-2xl">
+                                    <div className={`w-12 h-6 rounded-full relative cursor-pointer transition-colors ${formData.is_returnable ? 'bg-primary' : 'bg-white/10'}`}
+                                        onClick={() => setFormData(prev => ({ ...prev, is_returnable: !prev.is_returnable }))}>
+                                        <motion.div
+                                            animate={{ x: formData.is_returnable ? 26 : 4 }}
+                                            className="absolute top-1 w-4 h-4 bg-white rounded-full shadow-sm"
+                                        />
+                                    </div>
+                                    <div className="flex-grow">
+                                        <p className="text-xs font-black">Return Policy</p>
+                                        <p className="text-[10px] opacity-40 font-bold uppercase tracking-wider">7-Day Returns</p>
+                                    </div>
                                 </div>
-                                <div className="flex-grow">
-                                    <p className="text-xs font-black">7-Day Return Policy</p>
-                                    <p className="text-[10px] opacity-40 font-bold uppercase tracking-wider">Accepting returns for this item</p>
+
+                                <div className="flex items-center gap-4 bg-white/[0.02] border border-white/5 p-4 rounded-2xl">
+                                    <div className={`w-12 h-6 rounded-full relative cursor-pointer transition-colors ${formData.is_free_delivery ? 'bg-green-500' : 'bg-white/10'}`}
+                                        onClick={() => setFormData(prev => ({ ...prev, is_free_delivery: !prev.is_free_delivery }))}>
+                                        <motion.div
+                                            animate={{ x: formData.is_free_delivery ? 26 : 4 }}
+                                            className="absolute top-1 w-4 h-4 bg-white rounded-full shadow-sm"
+                                        />
+                                    </div>
+                                    <div className="flex-grow">
+                                        <p className="text-xs font-black">Free Delivery</p>
+                                        <p className="text-[10px] opacity-40 font-bold uppercase tracking-wider">Zero Shipping Fee</p>
+                                    </div>
                                 </div>
                             </div>
                         </div>

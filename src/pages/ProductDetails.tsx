@@ -4,7 +4,7 @@ import { useProducts } from '../hooks/useProducts';
 import { useCartStore } from '../stores/useCartStore';
 import { supabase } from '../lib/supabase';
 import { useAuthStore } from '../stores/useAuthStore';
-import { ShoppingBag, ArrowLeft, Star, Heart, Share2, ShieldCheck, Truck, RefreshCcw, Send, MessageCircle, ChevronLeft, ChevronRight } from 'lucide-react';
+import { ShoppingBag, ArrowLeft, Star, Heart, Share2, ShieldCheck, Truck, RefreshCcw, MessageCircle, ChevronLeft, ChevronRight, X } from 'lucide-react';
 import { SEO } from '../components/SEO';
 import { useToastStore } from '../stores/useToastStore';
 import { generateProductURL } from '../lib/slugify';
@@ -18,11 +18,14 @@ interface Review {
     comment: string;
     created_at: string;
     user_id: string;
+    order_id: number;
+    product_id: number;
+    image_urls?: string[];
     profiles?: { full_name: string } | null;
 }
 
 export const ProductDetails = ({ productId, onBack, onFly }: { productId: number; onBack: () => void; onFly: (e: any) => void }) => {
-    const { products, loading: productsLoading, refetch } = useProducts();
+    const { products, loading: productsLoading } = useProducts();
     const { user } = useAuthStore();
     const addItem = useCartStore((state) => state.addItem);
     const product = products.find(p => String(p.id) === String(productId));
@@ -43,11 +46,9 @@ export const ProductDetails = ({ productId, onBack, onFly }: { productId: number
     const cardWidth = isMobile ? 'calc(33.333% - 6px)' : 'calc(25% - 9px)';
 
     const [reviews, setReviews] = useState<Review[]>([]);
-    const [newRating, setNewRating] = useState(5);
-    const [newComment, setNewComment] = useState('');
-    const [submitting, setSubmitting] = useState(false);
     const [loadingReviews, setLoadingReviews] = useState(true);
     const [quantity, setQuantity] = useState(1);
+    const [selectedReviewImage, setSelectedReviewImage] = useState<string | null>(null);
 
     // Advanced Daraz-style Hover Zoom state
     const [isHoveringImage, setIsHoveringImage] = useState(false);
@@ -100,6 +101,7 @@ export const ProductDetails = ({ productId, onBack, onFly }: { productId: number
             setActiveVariantData(null);
         }
     }, [selectedVariants, product?.pricing_matrix, product?.dynamic_attributes]);
+
 
     const fetchReviews = useCallback(async () => {
         if (!productId) return;
@@ -200,7 +202,7 @@ export const ProductDetails = ({ productId, onBack, onFly }: { productId: number
             }),
             offers: {
                 '@type': 'Offer',
-                url: `https://tarzify.com/${generateProductURL(product.name, product.sku)}`,
+                url: `https://tarzify.com/#${generateProductURL(product.name, product.sku)}`,
                 priceCurrency: 'PKR',
                 price: product.price,
                 availability: product.stock > 0
@@ -269,38 +271,6 @@ export const ProductDetails = ({ productId, onBack, onFly }: { productId: number
 
     const toast = useToastStore();
 
-    const handleSubmitReview = async (e: React.FormEvent) => {
-        e.preventDefault();
-        if (!user) {
-            toast.show('Please login to leave a review.', 'info');
-            return;
-        }
-
-        setSubmitting(true);
-        try {
-            const { error } = await supabase
-                .from('reviews')
-                .upsert({
-                    product_id: Number(productId),
-                    user_id: user.id,
-                    rating: newRating,
-                    comment: newComment,
-                    created_at: new Date().toISOString()
-                }, {
-                    onConflict: 'product_id,user_id'
-                });
-
-            if (error) throw error;
-            setNewComment('');
-            fetchReviews();
-            refetch(); // Update the store to get new combined rating
-            toast.show('Review submitted successfully!', 'success');
-        } catch (err) {
-            toast.show('Error: ' + (err as Error).message, 'error');
-        } finally {
-            setSubmitting(false);
-        }
-    };
 
     const [activeImage, setActiveImage] = useState(product?.image_url || '');
 
@@ -385,7 +355,7 @@ export const ProductDetails = ({ productId, onBack, onFly }: { productId: number
     };
 
     const handleShare = async () => {
-        const shareUrl = `${window.location.origin}/#product/${product?.id}`;
+        const shareUrl = `${window.location.origin}/#${generateProductURL(product.name, product.sku)}`;
         const shareData = {
             title: product?.name,
             text: `Check out ${product?.name} on Tarzify!`,
@@ -410,7 +380,7 @@ export const ProductDetails = ({ productId, onBack, onFly }: { productId: number
                 title={product.name}
                 description={product.description?.substring(0, 160) || `Buy ${product.name} at Tarzify.`}
                 image={product.image_url}
-                url={`https://tarzify.com/${generateProductURL(product.name, product.sku)}`}
+                url={`https://tarzify.com/#${generateProductURL(product.name, product.sku)}`}
                 type="product"
             />
             <div className="max-w-7xl mx-auto">
@@ -443,14 +413,14 @@ export const ProductDetails = ({ productId, onBack, onFly }: { productId: number
                             onMouseMove={handleMouseMove}
                             onMouseEnter={() => setIsHoveringImage(true)}
                             onMouseLeave={() => setIsHoveringImage(false)}
-                            className="aspect-[4/5] glass rounded-[2rem] sm:rounded-[3rem] overflow-hidden relative group shadow-2xl bg-white flex items-center justify-center p-4 border border-foreground/5 cursor-crosshair"
+                            className="aspect-[4/5] glass rounded-[2.5rem] sm:rounded-[3.5rem] overflow-hidden relative group shadow-2xl bg-white dark:bg-[#0a0a0b] flex items-center justify-center p-6 border border-foreground/5 cursor-crosshair"
                         >
                             {activeImage && (
                                 <img
                                     src={getImageUrl(activeImage)}
                                     alt={product.name}
                                     onError={() => handleImageError(activeImage)}
-                                    className="w-full h-full object-contain transition-opacity duration-300"
+                                    className="w-full h-full object-contain transition-opacity duration-300 rounded-[1.5rem] sm:rounded-[2.5rem]"
                                     style={{
                                         // Slight opacity drop on hover so the right slider pops more
                                         opacity: isHoveringImage && !isMobile ? 0.9 : 1
@@ -516,29 +486,35 @@ export const ProductDetails = ({ productId, onBack, onFly }: { productId: number
                                 </div>
                             </div>
                             <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-5xl font-bold tracking-tight leading-tight">{product.name}</h1>
-                            <div className="flex flex-col gap-1 sm:gap-2">
-                                <div className="flex items-baseline gap-3">
-                                    <p className="text-3xl sm:text-4xl md:text-5xl font-black text-primary leading-none">Rs. {displayPrice.toLocaleString()}</p>
-                                    {product.compare_at_price && product.compare_at_price > displayPrice && (
-                                        <div className="flex items-center gap-2">
-                                            <span className="text-lg sm:text-xl text-foreground/30 line-through font-bold">
-                                                Rs. {product.compare_at_price.toLocaleString()}
-                                            </span>
-                                            <span className="px-2 py-0.5 bg-[#f85606] text-white text-[10px] font-bold rounded-sm">
-                                                -{Math.round(((product.compare_at_price - displayPrice) / product.compare_at_price) * 100)}%
-                                            </span>
+                                <div className="flex flex-col gap-1 sm:gap-2">
+                                    <div className="flex items-baseline gap-4">
+                                        <span className="text-5xl font-black italic tracking-tighter text-primary">Rs. {displayPrice.toLocaleString()}</span>
+                                        {product.compare_at_price && product.compare_at_price > displayPrice && (
+                                            <div className="flex items-center gap-2">
+                                                <span className="text-lg sm:text-xl text-foreground/30 line-through font-bold">
+                                                    Rs. {product.compare_at_price.toLocaleString()}
+                                                </span>
+                                                <span className="px-2 py-0.5 bg-[#f85606] text-white text-[10px] font-bold rounded-sm">
+                                                    -{Math.round(((product.compare_at_price - displayPrice) / product.compare_at_price) * 100)}%
+                                                </span>
+                                            </div>
+                                        )}
+                                    </div>
+                                    {product.is_free_delivery && (
+                                        <div className="inline-flex items-center gap-2 px-4 py-2 bg-green-500/10 text-green-500 rounded-2xl border border-green-500/20 w-fit">
+                                            <Truck className="w-4 h-4" />
+                                            <span className="text-[10px] font-black uppercase tracking-widest">Free Express Delivery</span>
                                         </div>
                                     )}
-                                </div>
-                                <div className="flex items-center gap-1.5 text-yellow-500">
-                                    <div className="flex">
-                                        {[...Array(5)].map((_, i) => (
-                                            <Star key={i} className={`w-3 h-3 sm:w-3.5 sm:h-3.5 ${i < Math.round(Number(avgRating)) ? 'fill-current' : 'opacity-20'}`} />
-                                        ))}
+                                    <div className="flex items-center gap-1.5 text-yellow-500">
+                                        <div className="flex">
+                                            {[...Array(5)].map((_, i) => (
+                                                <Star key={i} className={`w-3 h-3 sm:w-3.5 sm:h-3.5 ${i < Math.round(Number(avgRating)) ? 'fill-current' : 'opacity-20'}`} />
+                                            ))}
+                                        </div>
+                                        <span className="text-[10px] sm:text-xs font-black text-foreground/40 mt-0.5">({avgRating} Average / {totalReviewsCount} reviews)</span>
                                     </div>
-                                    <span className="text-[10px] sm:text-xs font-black text-foreground/40 mt-0.5">({avgRating} Average / {totalReviewsCount} reviews)</span>
                                 </div>
-                            </div>
                         </div>
 
                         <p className="text-lg opacity-60 leading-relaxed font-medium">
@@ -736,37 +712,6 @@ export const ProductDetails = ({ productId, onBack, onFly }: { productId: number
                             </div>
                         </div>
 
-                        {user && (
-                            <form onSubmit={handleSubmitReview} className="glass p-8 rounded-[2.5rem] space-y-6">
-                                <h3 className="text-xl font-black tracking-tighter uppercase italic">Share your experience</h3>
-                                <div className="space-y-4">
-                                    <div className="flex gap-2">
-                                        {[1, 2, 3, 4, 5].map((star) => (
-                                            <button
-                                                key={star}
-                                                type="button"
-                                                onClick={() => setNewRating(star)}
-                                                className={`p-2 transition-transform hover:scale-125 ${newRating >= star ? 'text-yellow-500' : 'text-foreground/10'}`}
-                                            >
-                                                <Star className={`w-6 h-6 ${newRating >= star ? 'fill-current' : ''}`} />
-                                            </button>
-                                        ))}
-                                    </div>
-                                    <textarea
-                                        placeholder="What did you think of this product?"
-                                        value={newComment}
-                                        onChange={(e) => setNewComment(e.target.value)}
-                                        className="w-full bg-foreground/5 border-none rounded-2xl p-4 min-h-[120px] focus:ring-2 ring-primary/30 outline-none text-sm transition-all"
-                                    />
-                                    <button
-                                        disabled={submitting}
-                                        className="w-full py-4 bg-primary text-white rounded-2xl font-black shadow-xl shadow-primary/20 flex items-center justify-center gap-2 hover:scale-[1.02] active:scale-[0.98] transition-all"
-                                    >
-                                        {submitting ? <Loader2 className="w-5 h-5 animate-spin" /> : <><Send className="w-4 h-4" /> Submit Review</>}
-                                    </button>
-                                </div>
-                            </form>
-                        )}
                     </div>
 
                     <div className="lg:col-span-8 space-y-8">
@@ -818,6 +763,33 @@ export const ProductDetails = ({ productId, onBack, onFly }: { productId: number
                                                 </div>
                                             </div>
                                             <p className="text-sm leading-relaxed opacity-80 font-medium">{review.comment}</p>
+                                            
+                                            {/* Review Images */}
+                                            {review.image_urls && review.image_urls.length > 0 && (
+                                                <div className="flex flex-wrap gap-2 pt-2">
+                                                    {review.image_urls.map((url: string, i: number) => (
+                                                        <div 
+                                                            key={i} 
+                                                            onClick={() => setSelectedReviewImage(url)}
+                                                            className="w-14 h-14 rounded-xl overflow-hidden border border-white/5 cursor-zoom-in hover:scale-105 transition-transform shadow-sm"
+                                                        >
+                                                            <img src={url} alt={`Review ${i}`} className="w-full h-full object-cover" />
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            )}
+
+                                            {/* Edit Button for own reviews */}
+                                            {user && review.user_id === user.id && (
+                                                <div className="pt-2 flex justify-end">
+                                                    <button 
+                                                        onClick={() => window.location.hash = `#rate-product?order_id=${review.order_id}&product_id=${review.product_id}&user_id=${user.id}&rating=${review.rating}`}
+                                                        className="text-[10px] font-black uppercase tracking-widest text-primary hover:opacity-70 transition-opacity"
+                                                    >
+                                                        Edit Review
+                                                    </button>
+                                                </div>
+                                            )}
                                         </motion.div>
                                     );
                                 })}
@@ -889,6 +861,28 @@ export const ProductDetails = ({ productId, onBack, onFly }: { productId: number
                     </section>
                 );
             })()}
+            {/* Image Lightbox Modal */}
+            {selectedReviewImage && (
+                <div 
+                    className="fixed inset-0 z-[100] bg-black/95 backdrop-blur-sm flex items-center justify-center p-4"
+                    onClick={() => setSelectedReviewImage(null)}
+                >
+                    <button 
+                        className="absolute top-6 right-6 text-white/50 hover:text-white transition-colors"
+                        onClick={(e) => { e.stopPropagation(); setSelectedReviewImage(null); }}
+                    >
+                        <X className="w-8 h-8" />
+                    </button>
+                    <motion.img 
+                        initial={{ opacity: 0, scale: 0.9 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        src={selectedReviewImage} 
+                        alt="Preview" 
+                        className="max-w-full max-h-[90vh] rounded-2xl shadow-2xl object-contain"
+                        onClick={(e) => e.stopPropagation()}
+                    />
+                </div>
+            )}
         </div>
     );
 };

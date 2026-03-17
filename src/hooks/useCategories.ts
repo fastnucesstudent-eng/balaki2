@@ -25,6 +25,7 @@ export const useCategories = () => {
             if (error) throw error;
             setCategories(data || []);
         } catch (err: any) {
+            if (err?.name === 'AbortError' || err?.message?.includes('aborted')) return;
             console.error('Error fetching categories:', err);
             toast.show('Failed to load categories', 'error');
         } finally {

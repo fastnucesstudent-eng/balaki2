@@ -70,7 +70,10 @@ export const CheckoutPage = ({ onBack }: { onBack: () => void }) => {
     }, [orderComplete, createdOrderId]);
 
     const selectedRate = shippingRates.find(r => r.id === formData.shippingMethod) || shippingRates[0];
-    const shippingCost = selectedRate ? selectedRate.price : 0;
+    
+    // Check if any item in the cart qualifies for free delivery
+    const hasFreeDeliveryItem = items.some(item => (item as any).is_free_delivery);
+    const shippingCost = hasFreeDeliveryItem ? 0 : (selectedRate ? selectedRate.price : 0);
     const finalTotal = total + shippingCost;
 
     const handleNext = () => {
@@ -366,7 +369,9 @@ export const CheckoutPage = ({ onBack }: { onBack: () => void }) => {
                                                         <p className="text-xs opacity-50">{rate.estimated_days} Business Days</p>
                                                     </div>
                                                 </div>
-                                                <span className="font-black text-primary">Rs. {rate.price.toLocaleString()}</span>
+                                                <span className="font-black text-primary">
+                                                    {hasFreeDeliveryItem ? 'Free' : `Rs. ${rate.price.toLocaleString()}`}
+                                                </span>
                                             </label>
                                         ))
                                     )}
@@ -501,7 +506,14 @@ export const CheckoutPage = ({ onBack }: { onBack: () => void }) => {
                             </div>
                             <div className="flex justify-between text-sm opacity-50 font-bold">
                                 <span>Shipping</span>
-                                <span>Rs. {shippingCost.toLocaleString()}</span>
+                                {hasFreeDeliveryItem ? (
+                                    <div className="flex flex-col items-end">
+                                        <span className="line-through text-xs">Rs. {(selectedRate?.price || 0).toLocaleString()}</span>
+                                        <span className="text-green-500 text-xs font-black uppercase">Free</span>
+                                    </div>
+                                ) : (
+                                    <span>Rs. {shippingCost.toLocaleString()}</span>
+                                )}
                             </div>
                             <div className="flex justify-between pt-4 text-2xl font-black tracking-tighter border-t border-foreground/10">
                                 <span className="italic">Total</span>

@@ -27,17 +27,14 @@ export const useAuthStore = create<AuthState>((set) => ({
         try {
             console.log('🔄 Initializing Auth Store...');
 
-            // Race getSession() against a 10-second timeout so we never hang forever
-            const sessionResult = await Promise.race<ReturnType<typeof supabase.auth.getSession>>([
-                supabase.auth.getSession(),
-                new Promise<never>((_, reject) =>
-                    setTimeout(() => reject(new Error('Auth session fetch timed out')), 10000)
-                ),
-            ]);
-
-            const { data: { session }, error: sessionError } = await sessionResult;
-
+            // Fetch current session
+            const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+            
             if (sessionError) {
+                if (sessionError.name === 'AbortError' || sessionError.message?.includes('aborted')) {
+                    console.log('👤 Auth session fetch aborted (normal during navigation/refresh)');
+                    return;
+                }
                 console.error('❌ Session fetch error:', sessionError);
                 throw sessionError;
             }
@@ -94,7 +91,11 @@ export const useAuthStore = create<AuthState>((set) => ({
             });
 
             authSubscription = subscription;
-        } catch (err) {
+        } catch (err: any) {
+            // Silence AbortErrors as they are normal during component cleanup/HMR
+            if (err?.name === 'AbortError' || err?.message?.includes('aborted')) {
+                return;
+            }
             console.error('❌ Auth initialization failed:', err);
             set({ user: null, role: null, loading: false });
         }

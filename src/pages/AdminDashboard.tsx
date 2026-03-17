@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { LayoutDashboard, ShoppingBag, Package, Users, Bell, Settings, ArrowUpRight, Search, Plus, Save, Loader2, Menu, X, Trash2, Eye, Upload, Edit2 } from 'lucide-react';
+import { LayoutDashboard, ShoppingBag, Package, Users, Bell, Settings, ArrowUpRight, Search, Plus, Save, Loader2, Menu, X, Trash2, Eye, Upload, Edit2, Image as ImageIcon } from 'lucide-react';
 import { ReceiptModal } from '../components/ReceiptModal';
 import { useProducts } from '../hooks/useProducts';
 import { supabase } from '../lib/supabase';
@@ -31,6 +31,30 @@ export const AdminDashboard = () => {
     const [carts, setCarts] = useState<any[]>([]);
     const [dataLoading, setDataLoading] = useState(false);
     const [selectedOrderToView, setSelectedOrderToView] = useState<any | null>(null);
+    const [articleToDelete, setArticleToDelete] = useState<number | null>(null);
+
+    // Banners State
+    const [banners, setBanners] = useState<any[]>([]);
+    const [newBanner, setNewBanner] = useState({
+        image_url: '',
+        link_url: '',
+        start_at: new Date().toISOString().slice(0, 16),
+        end_at: '',
+        slide_duration: 5000,
+        display_order: 0
+    });
+
+    // Articles State
+    const [articles, setArticles] = useState<any[]>([]);
+    const [editingArticleId, setEditingArticleId] = useState<number | null>(null);
+    const [isPublishing, setIsPublishing] = useState(false);
+    const [newArticle, setNewArticle] = useState({
+        title: '',
+        excerpt: '',
+        content: '',
+        image_url: '',
+        status: 'published' as 'draft' | 'published'
+    });
 
     useEffect(() => {
         const initialStock: Record<number, number> = {};
@@ -132,9 +156,41 @@ export const AdminDashboard = () => {
                     setCarts(Object.values(grouped));
                 }
             }
+            if (activeTab === 'banners') {
+                const { data, error } = await supabase
+                    .from('banners')
+                    .select('*, merchant:profiles!merchant_id(email, full_name)')
+                    .order('display_order', { ascending: true });
+                if (error) {
+                    if (error.code === '42P01') {
+                        console.warn('Banners table missing in AdminDashboard');
+                    } else {
+                        useToastStore.getState().show(error.message, 'error');
+                    }
+                    setDataLoading(false);
+                    return;
+                }
+                if (data) setBanners(data);
+            }
+            if (activeTab === 'articles') {
+                const { data, error } = await supabase
+                    .from('articles')
+                    .select('*')
+                    .order('created_at', { ascending: false });
+                if (error) {
+                    if (error.code === '42P01') {
+                        console.warn('Articles table missing');
+                    } else {
+                        useToastStore.getState().show(error.message, 'error');
+                    }
+                    setDataLoading(false);
+                    return;
+                }
+                if (data) setArticles(data);
+            }
             setDataLoading(false);
         };
-        const tabsRequiringData = ['orders', 'customers', 'carts'];
+        const tabsRequiringData = ['orders', 'customers', 'carts', 'banners', 'articles'];
         if (tabsRequiringData.includes(activeTab)) fetchData();
     }, [activeTab]);
 
@@ -231,6 +287,168 @@ export const AdminDashboard = () => {
         await deleteCategory(id);
     };
 
+    const handleAddBanner = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!newBanner.image_url) return;
+        
+        setDataLoading(true);
+        try {
+            const { error: insertError } = await supabase
+                .from('banners')
+                .insert({
+                    ...newBanner,
+                    end_at: newBanner.end_at || null,
+                    status: 'approved' // Admin added banners are active immediately
+                });
+            if (insertError) throw insertError;
+            useToastStore.getState().show('Banner added!', 'success');
+            setNewBanner({
+                image_url: '',
+                link_url: '',
+                start_at: new Date().toISOString().slice(0, 16),
+                end_at: '',
+                slide_duration: 5000,
+                display_order: 0
+            });
+            // Refetch
+            const { data } = await supabase.from('banners').select('*, merchant:profiles!merchant_id(email, full_name)').order('display_order', { ascending: true });
+            if (data) setBanners(data);
+        } catch (err: any) {
+            useToastStore.getState().show(err.message, 'error');
+        } finally {
+            setDataLoading(false);
+        }
+    };
+
+    const handleDeleteBanner = async (id: number) => {
+        if (!confirm('Delete this banner?')) return;
+        try {
+            const { error } = await supabase.from('banners').delete().eq('id', id);
+            if (error) throw error;
+            setBanners(prev => prev.filter(b => b.id !== id));
+            useToastStore.getState().show('Banner removed', 'success');
+        } catch (err: any) {
+            useToastStore.getState().show(err.message, 'error');
+        }
+    };
+
+    const handleSaveArticle = async (e: React.FormEvent) => {
+        e.preventDefault();
+        console.log('🚀 Saving article...', newArticle);
+        
+        if (!newArticle.title) {
+            useToastStore.getState().show('Title is required', 'error');
+            return;
+        }
+
+        setIsPublishing(true);
+        try {
+            if (editingArticleId) {
+                // Update
+                const { data, error } = await supabase
+                    .from('articles')
+                    .update({
+                        title: newArticle.title,
+                        excerpt: newArticle.excerpt,
+                        content: newArticle.content,
+                        image_url: newArticle.image_url,
+                        status: newArticle.status
+                    })
+                    .eq('id', editingArticleId)
+                    .select()
+                    .single();
+
+                if (error) throw error;
+                setArticles(prev => prev.map(a => a.id === editingArticleId ? data : a));
+                useToastStore.getState().show('Article updated!', 'success');
+            } else {
+                // Insert
+                const { data, error } = await supabase
+                    .from('articles')
+                    .insert([{
+                        title: newArticle.title,
+                        excerpt: newArticle.excerpt,
+                        content: newArticle.content,
+                        image_url: newArticle.image_url,
+                        status: newArticle.status
+                    }])
+                    .select()
+                    .single();
+
+                if (error) throw error;
+                if (data) setArticles(prev => [data, ...prev]);
+                useToastStore.getState().show('Article published!', 'success');
+            }
+
+            setNewArticle({
+                title: '',
+                excerpt: '',
+                content: '',
+                image_url: '',
+                status: 'published'
+            });
+            setEditingArticleId(null);
+        } catch (err: any) {
+            console.error('❌ Article save failed:', err);
+            useToastStore.getState().show(err.message || 'Failed to save article', 'error');
+        } finally {
+            setIsPublishing(false);
+        }
+    };
+
+    const startEditingArticle = (article: any) => {
+        setEditingArticleId(article.id);
+        setNewArticle({
+            title: article.title,
+            excerpt: article.excerpt || '',
+            content: article.content || '',
+            image_url: article.image_url || '',
+            status: article.status
+        });
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    };
+
+    const cancelEditingArticle = () => {
+        setEditingArticleId(null);
+        setNewArticle({
+            title: '',
+            excerpt: '',
+            content: '',
+            image_url: '',
+            status: 'published'
+        });
+    };
+
+    const handleDeleteArticle = async (id: number) => {
+        try {
+            const { error } = await supabase.from('articles').delete().eq('id', id);
+            if (error) throw error;
+            setArticles(prev => prev.filter(a => a.id !== id));
+            useToastStore.getState().show('Article deleted', 'success');
+            setArticleToDelete(null);
+        } catch (err: any) {
+            useToastStore.getState().show(err.message, 'error');
+        }
+    };
+
+    const handleUpdateBannerOrder = async (id: number, order: number) => {
+        setUpdatingId(id);
+        try {
+            const { error } = await supabase
+                .from('banners')
+                .update({ display_order: order })
+                .eq('id', id);
+
+            if (error) throw error;
+            useToastStore.getState().show('Order updated', 'success');
+            setBanners(prev => prev.map(b => b.id === id ? { ...b, display_order: order } : b).sort((a, b) => a.display_order - b.display_order));
+        } catch (err: any) {
+            useToastStore.getState().show(err.message, 'error');
+        } finally {
+            setUpdatingId(null);
+        }
+    };
+
     return (
         <div className="min-h-screen bg-transparent flex pt-20">
             {/* Sidebar */}
@@ -245,7 +463,9 @@ export const AdminDashboard = () => {
                     { id: 'categories', label: 'Categories', icon: Menu },
                     { id: 'orders', label: 'Orders', icon: ShoppingBag },
                     { id: 'customers', label: 'Customers', icon: Users },
-                    { id: 'carts', label: 'Customer Carts', icon: ShoppingBag }
+                    { id: 'carts', label: 'Customer Carts', icon: ShoppingBag },
+                    { id: 'banners', label: 'Banners', icon: ImageIcon },
+                    { id: 'articles', label: 'Articles', icon: Edit2 }
                 ].map(item => (
                     <button key={item.id} onClick={() => { setActiveTab(item.id); setShowMobileMenu(false); }} className={`flex items-center gap-2.5 px-3 py-3 rounded-2xl transition-all ${activeTab === item.id ? 'bg-primary text-white shadow-lg' : 'hover:bg-foreground/5 opacity-60'}`}>
                         <item.icon className="w-5 h-5 flex-shrink-0" />
@@ -609,6 +829,292 @@ export const AdminDashboard = () => {
                         </div>
                     </motion.div>
                 )}
+
+                {activeTab === 'banners' && (
+                    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-10">
+                        <div className="flex flex-col xl:flex-row gap-10">
+                            {/* Add Banner Form */}
+                            <div className="w-full xl:w-1/3 glass p-8 rounded-[3rem] border-white/5 space-y-6">
+                                <h3 className="text-xl font-black italic uppercase tracking-tighter">Add New Banner</h3>
+                                <form onSubmit={handleAddBanner} className="space-y-4">
+                                    <div className="space-y-2">
+                                        <label className="text-[10px] font-black uppercase opacity-30">Banner Image</label>
+                                        <button
+                                            type="button"
+                                            onClick={() => openUploadWidget((url) => setNewBanner(p => ({ ...p, image_url: url })))}
+                                            className="w-full aspect-[21/9] rounded-2xl border-2 border-dashed border-white/10 flex flex-col items-center justify-center gap-2 hover:border-primary/50 transition-all bg-foreground/5 overflow-hidden group"
+                                        >
+                                            {newBanner.image_url ? (
+                                                <img src={newBanner.image_url} alt="Preview" className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
+                                            ) : (
+                                                <>
+                                                    <Upload className="w-6 h-6 opacity-30" />
+                                                    <span className="text-[10px] font-bold opacity-30 text-center px-4">Click to upload (21:9 recommended)</span>
+                                                </>
+                                            )}
+                                        </button>
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div className="space-y-2">
+                                            <label className="text-[10px] font-black uppercase opacity-30">Display Order</label>
+                                            <input type="number" value={newBanner.display_order} onChange={e => setNewBanner(p => ({ ...p, display_order: parseInt(e.target.value) || 0 }))} className="w-full glass border-none rounded-xl p-3 font-bold text-sm bg-background/5" />
+                                        </div>
+                                        <div className="space-y-2">
+                                            <label className="text-[10px] font-black uppercase opacity-30">Slide Duration (ms)</label>
+                                            <input type="number" step="500" value={newBanner.slide_duration} onChange={e => setNewBanner(p => ({ ...p, slide_duration: parseInt(e.target.value) || 5000 }))} className="w-full glass border-none rounded-xl p-3 font-bold text-sm bg-background/5" />
+                                        </div>
+                                    </div>
+                                    <div className="space-y-2">
+                                        <label className="text-[10px] font-black uppercase opacity-30">Link URL (Optional)</label>
+                                        <input type="url" value={newBanner.link_url} onChange={e => setNewBanner(p => ({ ...p, link_url: e.target.value }))} placeholder="https://..." className="w-full glass border-none rounded-xl p-3 font-bold text-sm bg-background/5" />
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div className="space-y-2">
+                                            <label className="text-[10px] font-black uppercase opacity-30">Start Time</label>
+                                            <input type="datetime-local" value={newBanner.start_at} onChange={e => setNewBanner(p => ({ ...p, start_at: e.target.value }))} className="w-full glass border-none rounded-xl p-3 font-bold text-xs bg-background/5" />
+                                        </div>
+                                        <div className="space-y-2">
+                                            <label className="text-[10px] font-black uppercase opacity-30">End Time</label>
+                                            <input type="datetime-local" value={newBanner.end_at} onChange={e => setNewBanner(p => ({ ...p, end_at: e.target.value }))} className="w-full glass border-none rounded-xl p-3 font-bold text-xs bg-background/5" />
+                                        </div>
+                                    </div>
+                                    <button type="submit" disabled={dataLoading || !newBanner.image_url} className="w-full py-4 bg-primary text-white rounded-2xl font-black uppercase italic tracking-tighter shadow-xl shadow-primary/20 flex items-center justify-center gap-2 hover:scale-[1.02] active:scale-[0.98] transition-all">
+                                        {dataLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Plus className="w-5 h-5" />}
+                                        Save Banner
+                                    </button>
+                                </form>
+                            </div>
+
+                            {/* Banner List */}
+                            <div className="w-full xl:w-2/3 space-y-6">
+                                <h3 className="text-xl font-black italic uppercase tracking-tighter">Active & Merchant Banners</h3>
+                                <div className="grid gap-6">
+                                    {banners.length === 0 ? (
+                                        <div className="glass p-12 text-center rounded-[3rem] opacity-30 font-black uppercase italic tracking-widest text-xl">No banners found</div>
+                                    ) : banners.map(banner => {
+                                        const now = new Date();
+                                        const start = new Date(banner.start_at);
+                                        const end = banner.end_at ? new Date(banner.end_at) : null;
+                                        const isActive = banner.status === 'approved' && start <= now && (!end || end >= now);
+
+                                        return (
+                                            <div key={banner.id} className="glass p-6 rounded-[2rem] border-white/5 flex flex-col md:flex-row gap-6 relative group overflow-hidden">
+                                                <div className="w-full md:w-56 aspect-[21/7] md:aspect-[16/7] rounded-xl overflow-hidden bg-foreground/5 flex-shrink-0">
+                                                    <img src={banner.image_url} alt="" className="w-full h-full object-cover" />
+                                                </div>
+                                                <div className="flex-grow space-y-3">
+                                                    <div className="flex items-center justify-between">
+                                                        <div className="flex items-center gap-3">
+                                                            <span className={`px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-widest ${isActive ? 'bg-green-500/10 text-green-500' : banner.status === 'pending' ? 'bg-amber-500/10 text-amber-500' : 'bg-red-500/10 text-red-500'}`}>
+                                                                {banner.status === 'pending' ? 'Pending Approval' : isActive ? 'Live' : 'Inactive'}
+                                                            </span>
+                                                            <div className="flex items-center gap-2">
+                                                                <span className="text-[10px] font-black uppercase opacity-30">Order:</span>
+                                                                <input 
+                                                                    type="number" 
+                                                                    value={banner.display_order} 
+                                                                    onChange={(e) => {
+                                                                        const val = parseInt(e.target.value) || 0;
+                                                                        setBanners(prev => prev.map(b => b.id === banner.id ? { ...b, display_order: val } : b));
+                                                                    }}
+                                                                    onBlur={() => handleUpdateBannerOrder(banner.id, banner.display_order)}
+                                                                    onKeyDown={(e) => e.key === 'Enter' && handleUpdateBannerOrder(banner.id, banner.display_order)}
+                                                                    className="w-12 bg-foreground/5 border-none rounded-lg px-2 py-0.5 text-[10px] font-bold outline-none focus:ring-1 ring-primary/30"
+                                                                />
+                                                            </div>
+                                                        </div>
+                                                        <button onClick={() => handleDeleteBanner(banner.id)} className="p-2 text-red-500 hover:bg-red-500/10 rounded-lg opacity-0 group-hover:opacity-100 transition-all">
+                                                            <Trash2 className="w-4 h-4" />
+                                                        </button>
+                                                    </div>
+
+                                                    {banner.merchant && (
+                                                        <div className="flex flex-col gap-0.5">
+                                                            <div className="flex items-center gap-2">
+                                                                <p className="text-[10px] font-black uppercase opacity-30 tracking-widest">Merchant:</p>
+                                                                <p className="text-[10px] font-bold text-primary">{banner.merchant.full_name}</p>
+                                                            </div>
+                                                            <p className="text-[9px] font-medium opacity-50 ml-[60px]">{banner.merchant.email}</p>
+                                                        </div>
+                                                    )}
+
+                                                    {banner.link_url && <p className="text-[10px] font-medium text-primary/60 truncate max-w-xs">{banner.link_url}</p>}
+                                                    
+                                                    <div className="grid grid-cols-2 gap-4 pt-2">
+                                                        <div className="space-y-1">
+                                                            <p className="text-[8px] font-black uppercase opacity-30">Starts</p>
+                                                            <p className="text-xs font-bold">{new Date(banner.start_at).toLocaleDateString()}</p>
+                                                        </div>
+                                                        <div className="space-y-1">
+                                                            <p className="text-[8px] font-black uppercase opacity-30">Ends</p>
+                                                            <p className="text-xs font-bold">{banner.end_at ? new Date(banner.end_at).toLocaleDateString() : '∞'}</p>
+                                                        </div>
+                                                    </div>
+
+                                                    {banner.status === 'pending' && (
+                                                        <div className="flex gap-2 pt-4">
+                                                            <button 
+                                                                onClick={async () => {
+                                                                    const { error } = await supabase.from('banners').update({ status: 'approved' }).eq('id', banner.id);
+                                                                    if (!error) {
+                                                                        setBanners(prev => prev.map(b => b.id === banner.id ? { ...b, status: 'approved' } : b));
+                                                                        useToastStore.getState().show('Banner approved!', 'success');
+                                                                        
+                                                                        // Notify Merchant via Email
+                                                                        if (banner.merchant?.email) {
+                                                                            fetch(`${import.meta.env.VITE_API_URL}/banners/notify-merchant`, {
+                                                                                method: 'POST',
+                                                                                headers: { 'Content-Type': 'application/json' },
+                                                                                body: JSON.stringify({
+                                                                                    merchantEmail: banner.merchant.email,
+                                                                                    status: 'approved',
+                                                                                    bannerUrl: banner.image_url
+                                                                                })
+                                                                            }).catch(console.error);
+                                                                        }
+                                                                    }
+                                                                }}
+                                                                className="px-4 py-2 bg-green-500 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:scale-105 transition-all"
+                                                            >
+                                                                Approve
+                                                            </button>
+                                                            <button 
+                                                                onClick={async () => {
+                                                                    const comment = prompt('Reason for rejection?');
+                                                                    const { error } = await supabase.from('banners').update({ status: 'rejected', admin_comment: comment }).eq('id', banner.id);
+                                                                    if (!error) {
+                                                                        setBanners(prev => prev.map(b => b.id === banner.id ? { ...b, status: 'rejected', admin_comment: comment } : b));
+                                                                        useToastStore.getState().show('Banner rejected', 'error');
+
+                                                                        // Notify Merchant via Email
+                                                                        if (banner.merchant?.email) {
+                                                                            fetch(`${import.meta.env.VITE_API_URL}/banners/notify-merchant`, {
+                                                                                method: 'POST',
+                                                                                headers: { 'Content-Type': 'application/json' },
+                                                                                body: JSON.stringify({
+                                                                                    merchantEmail: banner.merchant.email,
+                                                                                    status: 'rejected',
+                                                                                    adminComment: comment,
+                                                                                    bannerUrl: banner.image_url
+                                                                                })
+                                                                            }).catch(console.error);
+                                                                        }
+                                                                    }
+                                                                }}
+                                                                className="px-4 py-2 bg-red-500 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:scale-105 transition-all"
+                                                            >
+                                                                Reject
+                                                            </button>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+                        </div>
+                    </motion.div>
+                )}
+
+                {activeTab === 'articles' && (
+                    <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-10">
+                        <div className="flex flex-col xl:flex-row gap-10">
+                            {/* Create Article Form */}
+                            <div className="w-full xl:w-1/3 bg-foreground/5 rounded-[3rem] p-8 h-fit sticky top-10">
+                                <h3 className="text-xl font-black italic uppercase tracking-tighter mb-6">
+                                    {editingArticleId ? 'Edit Article' : 'Create New Article'}
+                                </h3>
+                                <form onSubmit={handleSaveArticle} className="space-y-4">
+                                    <div className="space-y-2">
+                                        <label className="text-[10px] font-black uppercase opacity-30">Title</label>
+                                        <input type="text" value={newArticle.title} onChange={e => setNewArticle(p => ({ ...p, title: e.target.value }))} className="w-full glass border-none rounded-xl p-4 font-bold text-sm bg-background/5" placeholder="Article Title" />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <label className="text-[10px] font-black uppercase opacity-30">Excerpt</label>
+                                        <textarea value={newArticle.excerpt} onChange={e => setNewArticle(p => ({ ...p, excerpt: e.target.value }))} className="w-full glass border-none rounded-xl p-4 font-bold text-sm bg-background/5 h-20" placeholder="Brief summary..." />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <label className="text-[10px] font-black uppercase opacity-30">Content</label>
+                                        <textarea value={newArticle.content} onChange={e => setNewArticle(p => ({ ...p, content: e.target.value }))} className="w-full glass border-none rounded-xl p-4 font-bold text-sm bg-background/5 h-40" placeholder="Full article content..." />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <label className="text-[10px] font-black uppercase opacity-30">Feature Image</label>
+                                        <div 
+                                            onClick={() => openUploadWidget((url) => setNewArticle(p => ({ ...p, image_url: url })))}
+                                            className="w-full aspect-video rounded-xl border-2 border-dashed border-foreground/10 flex items-center justify-center cursor-pointer hover:border-primary/50 transition-all overflow-hidden bg-background/5"
+                                        >
+                                            {newArticle.image_url ? <img src={newArticle.image_url} className="w-full h-full object-cover" /> : <Plus className="w-8 h-8 opacity-20" />}
+                                        </div>
+                                    </div>
+                                    <div className="flex gap-4">
+                                        <button type="submit" disabled={isPublishing || !newArticle.title} className="flex-grow py-4 bg-primary text-white rounded-2xl font-black uppercase italic tracking-tighter shadow-xl shadow-primary/20 flex items-center justify-center gap-2 hover:scale-[1.02] active:scale-[0.98] transition-all">
+                                            {isPublishing ? <Loader2 className="w-5 h-5 animate-spin" /> : editingArticleId ? <Save className="w-5 h-5" /> : <Plus className="w-5 h-5" />}
+                                            {editingArticleId ? 'Save Changes' : 'Publish Article'}
+                                        </button>
+                                        {editingArticleId && (
+                                            <button 
+                                                type="button" 
+                                                onClick={cancelEditingArticle}
+                                                className="px-6 py-4 bg-foreground/10 text-foreground rounded-2xl font-black uppercase italic tracking-tighter hover:bg-foreground/20 transition-all"
+                                            >
+                                                Cancel
+                                            </button>
+                                        )}
+                                    </div>
+                                </form>
+                            </div>
+
+                            {/* Articles List */}
+                            <div className="w-full xl:w-2/3 space-y-6">
+                                <h3 className="text-xl font-black italic uppercase tracking-tighter">Published Articles</h3>
+                                <div className="grid gap-6">
+                                    {articles.length === 0 ? (
+                                        <div className="glass p-12 text-center rounded-[3rem] opacity-30 font-black uppercase italic tracking-widest text-xl">No articles found</div>
+                                    ) : articles.map(article => (
+                                        <div key={article.id} className="glass p-6 rounded-[2rem] border-white/5 flex flex-col md:flex-row gap-6 relative group overflow-hidden">
+                                            <div className="w-full md:w-56 aspect-video rounded-xl overflow-hidden bg-foreground/5 flex-shrink-0 flex items-center justify-center">
+                                                {article.image_url ? (
+                                                    <img src={article.image_url} alt="" className="w-full h-full object-cover" />
+                                                ) : (
+                                                    <ImageIcon className="w-10 h-10 opacity-10" />
+                                                )}
+                                            </div>
+                                            <div className="flex-grow space-y-2">
+                                                <div className="flex items-center justify-between">
+                                                    <h4 className="font-black uppercase italic text-lg leading-tight">{article.title}</h4>
+                                                    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all">
+                                                        <button 
+                                                            onClick={() => startEditingArticle(article)} 
+                                                            className="p-2 text-foreground hover:bg-foreground/10 rounded-lg"
+                                                            title="Edit Article"
+                                                        >
+                                                            <Edit2 className="w-4 h-4" />
+                                                        </button>
+                                                        <button 
+                                                            onClick={() => setArticleToDelete(article.id)} 
+                                                            className="p-2 text-red-500 hover:bg-red-500/10 rounded-lg"
+                                                            title="Delete Article"
+                                                        >
+                                                            <Trash2 className="w-4 h-4" />
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                                <p className="text-xs opacity-50 font-medium line-clamp-2">{article.excerpt}</p>
+                                                <div className="flex items-center gap-3 pt-2">
+                                                    <span className="text-[10px] font-black uppercase opacity-30">{new Date(article.created_at).toLocaleDateString()}</span>
+                                                    <span className={`px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-widest ${article.status === 'published' ? 'bg-green-500/10 text-green-500' : 'bg-amber-500/10 text-amber-500'}`}>
+                                                        {article.status}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
+                    </motion.div>
+                )}
             </div>
 
             <AnimatePresence>
@@ -641,6 +1147,47 @@ export const AdminDashboard = () => {
             {selectedOrderToView && (
                 <ReceiptModal order={selectedOrderToView} onClose={() => setSelectedOrderToView(null)} />
             )}
-        </div >
+
+            {/* Custom Delete Confirmation Modal */}
+            <AnimatePresence>
+                {articleToDelete !== null && (
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="fixed inset-0 z-[300] flex items-center justify-center p-6 bg-black/80 backdrop-blur-sm"
+                    >
+                        <motion.div 
+                            initial={{ scale: 0.9, opacity: 0 }}
+                            animate={{ scale: 1, opacity: 1 }}
+                            exit={{ scale: 0.9, opacity: 0 }}
+                            className="bg-white dark:bg-zinc-950 w-full max-w-sm rounded-[2.5rem] p-8 shadow-2xl border border-white/5 text-center"
+                        >
+                            <div className="w-16 h-16 bg-red-500/10 text-red-500 rounded-full flex items-center justify-center mx-auto mb-6">
+                                <Trash2 className="w-8 h-8" />
+                            </div>
+                            <h3 className="text-xl font-black uppercase italic tracking-tighter mb-2">Delete Article?</h3>
+                            <p className="opacity-50 text-sm font-medium mb-8">This action cannot be undone. Are you sure you want to remove this story?</p>
+                            
+                            <div className="flex gap-4">
+                                <button 
+                                    onClick={() => setArticleToDelete(null)}
+                                    className="flex-1 py-4 bg-foreground/5 text-foreground rounded-2xl font-black uppercase italic tracking-tighter hover:bg-foreground/10 transition-all"
+                                >
+                                    Cancel
+                                </button>
+                                <button 
+                                    onClick={() => handleDeleteArticle(articleToDelete)}
+                                    className="flex-1 py-4 bg-red-500 text-white rounded-2xl font-black uppercase italic tracking-tighter shadow-xl shadow-red-500/20 hover:scale-[1.05] active:scale-[0.95] transition-all"
+                                >
+                                    Delete
+                                </button>
+                            </div>
+                        </motion.div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+        </div>
     );
 };
+

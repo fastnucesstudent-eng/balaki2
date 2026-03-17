@@ -13,6 +13,8 @@ interface CartItem {
     quantity: number;
     stock: number; // Current available stock
     variant_combo?: Record<string, string>;
+    is_free_delivery?: boolean;
+    sale_percentage?: number;
 }
 
 interface CartState {
@@ -64,6 +66,8 @@ export const useCartStore = create<CartState>()(
                         ...product,
                         image: itemImage,
                         compare_at_price: product.compare_at_price,
+                        is_free_delivery: product.is_free_delivery,
+                        sale_percentage: product.sale_percentage,
                         quantity: quantity,
                         stock: availableStock,
                         variant_combo: variant_combo

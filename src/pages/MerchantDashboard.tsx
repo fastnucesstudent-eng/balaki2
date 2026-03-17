@@ -4,7 +4,7 @@ import {
     Package, Truck, BarChart3, Plus, X, Edit2,
     ShoppingBag, Menu,
     Loader2,
-    Clock, CheckCircle2, QrCode
+    Clock, CheckCircle2, QrCode, Image as ImageIcon, Upload, Trash2, ExternalLink
 } from 'lucide-react';
 import { useProducts } from '../hooks/useProducts';
 import { supabase } from '../lib/supabase';
@@ -13,6 +13,8 @@ import { useToastStore } from '../stores/useToastStore';
 import { ReceiptModal } from '../components/ReceiptModal';
 import { fetchWithTimeout } from '../lib/fetchWithTimeout';
 import { ProductForm as UnifiedProductForm } from '../components/ProductForm';
+import { useCategories } from '../hooks/useCategories';
+import { Percent, Tag } from 'lucide-react';
 
 declare global {
     interface Window {
@@ -58,7 +60,128 @@ export const MerchantDashboard = () => {
         shipping_proof_url: ''
     });
 
+    // Bulk Discount State
+    const [showBulkDiscount, setShowBulkDiscount] = useState(false);
+    const [bulkDiscountData, setBulkDiscountData] = useState({
+        category: '',
+        percentage: 0
+    });
+    const { categories } = useCategories();
+
     const [selectedOrderForReceipt, setSelectedOrderForReceipt] = useState<any | null>(null);
+
+    // Banner Logic
+    const [banners, setBanners] = useState<any[]>([]);
+    const [bannersLoading, setBannersLoading] = useState(false);
+    const [newBanner, setNewBanner] = useState({
+        image_url: '',
+        link_url: '',
+        start_at: new Date().toISOString().slice(0, 16),
+        end_at: '',
+        slide_duration: 5000
+    });
+
+    const fetchBanners = async () => {
+        if (!user) return;
+        setBannersLoading(true);
+        try {
+            const { data, error } = await supabase
+                .from('banners')
+                .select('*')
+                .eq('merchant_id', user.id)
+                .order('created_at', { ascending: false });
+            if (error) {
+                if (error.code === '42P01') {
+                    console.warn('Banners table missing in MerchantDashboard');
+                } else {
+                    toast.show(error.message, 'error');
+                }
+                return;
+            }
+            setBanners(data || []);
+        } catch (error: any) {
+            toast.show(error.message, 'error');
+        } finally {
+            setBannersLoading(false);
+        }
+    };
+
+    const handleRequestBanner = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!user) return;
+        setBannersLoading(true);
+        try {
+            const { error } = await supabase.from('banners').insert([{
+                ...newBanner,
+                merchant_id: user.id,
+                status: 'pending',
+                display_order: 0 // Admin will set this during approval
+            }]);
+            if (error) throw error;
+            toast.show('Banner request sent to admin!', 'success');
+
+            // Notify Admin via Email
+            try {
+                await fetch(`${import.meta.env.VITE_API_URL}/banners/notify-admin`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        merchantName: user.user_metadata?.full_name || user.email,
+                        merchantEmail: user.email,
+                        bannerUrl: newBanner.image_url
+                    })
+                });
+            } catch (e) {
+                console.error('Failed to send admin notification email', e);
+            }
+
+            setNewBanner({
+                image_url: '',
+                link_url: '',
+                start_at: new Date().toISOString().slice(0, 16),
+                end_at: '',
+                slide_duration: 5000
+            });
+            fetchBanners();
+        } catch (error: any) {
+            toast.show(error.message, 'error');
+        } finally {
+            setBannersLoading(false);
+        }
+    };
+
+    const handleDeleteBanner = async (id: number) => {
+        if (!confirm('Are you sure you want to delete this banner request?')) return;
+        try {
+            const { error } = await supabase.from('banners').delete().eq('id', id);
+            if (error) throw error;
+            toast.show('Banner request deleted', 'success');
+            fetchBanners();
+        } catch (error: any) {
+            toast.show(error.message, 'error');
+        }
+    };
+
+    const openUploadWidget = (callback: (url: string) => void) => {
+        const widget = window.cloudinary.createUploadWidget(
+            {
+                cloudName: import.meta.env.VITE_CLOUDINARY_CLOUD_NAME,
+                uploadPreset: import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET,
+                multiple: false,
+                maxFiles: 1,
+            },
+            (error: any, result: any) => {
+                if (!error && result && result.event === "success") {
+                    callback(result.info.secure_url);
+                }
+            }
+        );
+        widget.open();
+    };
+
+    useEffect(() => {
+        if (activeTab === 'banners') fetchBanners();
+    }, [activeTab]);
 
     // Carts State
     const [carts, setCarts] = useState<any[]>([]);
@@ -291,6 +414,66 @@ export const MerchantDashboard = () => {
         }
     };
 
+    const handleApplyBulkDiscount = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!bulkDiscountData.category) {
+            toast.show('Please select a category', 'error');
+            return;
+        }
+
+        setUploading(true);
+        try {
+            // Bulk update via Supabase
+            // 1. Fetch current prices/compare_at for matching products to ensure we don't lose data
+            let query = supabase
+                .from('products')
+                .select('*')
+                .eq('merchant_id', user?.id)
+                .is('deleted_at', null);
+
+            if (bulkDiscountData.category !== 'all') {
+                query = query.eq('category', bulkDiscountData.category);
+            }
+
+            const { data: pds, error: fetchError } = await query;
+
+            if (fetchError) throw fetchError;
+
+            if (!pds || pds.length === 0) {
+                toast.show('No products found in this category', 'error');
+                return;
+            }
+
+            const pct = bulkDiscountData.percentage;
+            const updates = pds.map(p => {
+                const basePrice = (p.compare_at_price && p.compare_at_price > 0) ? p.compare_at_price : p.price;
+                const newPrice = Math.round(basePrice * (1 - pct / 100));
+                return {
+                    ...p,
+                    sale_percentage: pct,
+                    compare_at_price: basePrice,
+                    price: newPrice
+                };
+            });
+
+            // Upsert with id to trigger updates
+            const { error: updateError } = await supabase
+                .from('products')
+                .upsert(updates);
+
+            if (updateError) throw updateError;
+
+            toast.show(`Applied ${pct}% discount to ${pds.length} products!`, 'success');
+            setShowBulkDiscount(false);
+            setBulkDiscountData({ category: '', percentage: 0 });
+            refetchProducts();
+        } catch (error: any) {
+            toast.show('Error applying discount: ' + error.message, 'error');
+        } finally {
+            setUploading(false);
+        }
+    };
+
     const handlePrintReceipt = (order: any) => {
         setSelectedOrderForReceipt(order);
     };
@@ -331,6 +514,69 @@ export const MerchantDashboard = () => {
                         </motion.div>
                     </div>
                 )}
+
+                {/* Bulk Discount Modal */}
+                {showBulkDiscount && (
+                    <div className="fixed inset-0 z-[200] flex items-center justify-center p-6 bg-black/80 backdrop-blur-md">
+                        <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="bg-background w-full max-w-lg rounded-[3rem] p-10 border border-border shadow-2xl space-y-8">
+                            <div className="flex justify-between items-center">
+                                <div className="flex items-center gap-3">
+                                    <div className="w-10 h-10 bg-primary/20 text-primary rounded-2xl flex items-center justify-center">
+                                        <Percent className="w-6 h-6" />
+                                    </div>
+                                    <h2 className="text-2xl font-black italic uppercase tracking-tighter">Bulk Sale</h2>
+                                </div>
+                                <button onClick={() => setShowBulkDiscount(false)} className="p-2 hover:bg-foreground/5 rounded-full"><X /></button>
+                            </div>
+                            
+                            <p className="text-sm opacity-50 font-medium">Apply a percentage discount to all products in a specific category. This will update prices based on their original MSRP.</p>
+
+                            <form onSubmit={handleApplyBulkDiscount} className="space-y-6">
+                                <div className="space-y-2">
+                                    <label className="text-[10px] font-black uppercase opacity-30">Select Category</label>
+                                    <select 
+                                        required
+                                        value={bulkDiscountData.category} 
+                                        onChange={e => setBulkDiscountData({ ...bulkDiscountData, category: e.target.value })} 
+                                        className="w-full glass border-none rounded-2xl p-4 bg-background appearance-none"
+                                    >
+                                        <option value="">Choose a category...</option>
+                                        <option value="all">Applied to All Products</option>
+                                        {categories.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
+                                    </select>
+                                </div>
+                                <div className="space-y-2">
+                                    <label className="text-[10px] font-black uppercase opacity-30">Discount Percentage (%)</label>
+                                    <div className="relative">
+                                        <input 
+                                            required 
+                                            type="number" 
+                                            min="0" 
+                                            max="100"
+                                            value={bulkDiscountData.percentage} 
+                                            onChange={e => setBulkDiscountData({ ...bulkDiscountData, percentage: parseInt(e.target.value) || 0 })} 
+                                            className="w-full glass border-none rounded-2xl p-4 pr-12 font-black italic text-xl" 
+                                            placeholder="0" 
+                                        />
+                                        <Percent className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 opacity-30" />
+                                    </div>
+                                </div>
+                                <button 
+                                    type="submit" 
+                                    disabled={uploading || !bulkDiscountData.category || bulkDiscountData.percentage < 0} 
+                                    className="w-full py-5 bg-primary text-white rounded-3xl font-black uppercase italic tracking-tighter disabled:opacity-30 hover:scale-[1.02] active:scale-[0.98] transition-all shadow-xl shadow-primary/20 flex items-center justify-center gap-3"
+                                >
+                                    {uploading ? <Loader2 className="w-6 h-6 animate-spin" /> : (
+                                        <>
+                                            <Tag className="w-5 h-5" />
+                                            Apply Discount
+                                        </>
+                                    )}
+                                </button>
+                            </form>
+                        </motion.div>
+                    </div>
+                )}
             </AnimatePresence>
 
             {/* Sidebar */}
@@ -344,12 +590,13 @@ export const MerchantDashboard = () => {
                 {[
                     { id: 'inventory', label: 'Inventory', icon: Package },
                     { id: 'orders', label: 'Orders', icon: Truck },
-                    { id: 'carts', label: 'Customer Carts', icon: ShoppingBag },
-                    { id: 'analytics', label: 'Revenue', icon: BarChart3 }
-                ].map(item => (
-                    <button key={item.id} onClick={() => { setActiveTab(item.id); setShowMobileMenu(false); }} className={`flex items-center gap-4 px-6 py-4 rounded-3xl transition-all ${activeTab === item.id ? 'bg-primary text-white shadow-2xl hover:scale-105' : 'hover:bg-foreground/5 opacity-40 hover:opacity-100'}`}>
-                        <item.icon className="w-5 h-5" />
-                        <span className="font-black text-sm uppercase tracking-widest">{item.label}</span>
+                    { id: 'analytics', icon: BarChart3, label: 'Performance' },
+                    { id: 'carts', icon: ShoppingBag, label: 'Customer Carts' },
+                    { id: 'banners', icon: ImageIcon, label: 'Banners' },
+                ].map((tab) => (
+                    <button key={tab.id} onClick={() => { setActiveTab(tab.id); setShowMobileMenu(false); }} className={`flex items-center gap-4 px-6 py-4 rounded-3xl transition-all ${activeTab === tab.id ? 'bg-primary text-white shadow-2xl hover:scale-105' : 'hover:bg-foreground/5 opacity-40 hover:opacity-100'}`}>
+                        <tab.icon className="w-5 h-5" />
+                        <span className="font-black text-sm uppercase tracking-widest">{tab.label}</span>
                     </button>
                 ))}
             </div>
@@ -366,7 +613,16 @@ export const MerchantDashboard = () => {
                         </h1>
                     </div>
                     {activeTab === 'inventory' && (
-                        <button onClick={() => setActiveTab('add-product')} className="bg-primary text-white p-4 px-8 rounded-2xl font-black italic uppercase tracking-tighter shadow-xl hover:scale-105 active:scale-95 transition-transform">Add Item</button>
+                        <div className="flex gap-4">
+                            <button 
+                                onClick={() => setShowBulkDiscount(true)} 
+                                className="bg-foreground/5 hover:bg-foreground/10 p-4 px-8 rounded-2xl font-black italic uppercase tracking-tighter transition-all flex items-center gap-2"
+                            >
+                                <Percent className="w-4 h-4" />
+                                <span className="hidden sm:inline">Bulk Sale</span>
+                            </button>
+                            <button onClick={() => setActiveTab('add-product')} className="bg-primary text-white p-4 px-8 rounded-2xl font-black italic uppercase tracking-tighter shadow-xl hover:scale-105 active:scale-95 transition-transform">Add Item</button>
+                        </div>
                     )}
                 </div>
 
@@ -593,6 +849,84 @@ export const MerchantDashboard = () => {
                                 })}
                             </div>
                         )}
+                    </div>
+                )}
+
+                {activeTab === 'banners' && (
+                    <div className="space-y-10 animate-in slide-in-from-bottom duration-500">
+                        <div className="flex flex-col xl:flex-row gap-10">
+                            <div className="w-full xl:w-1/3 bg-card p-10 rounded-[3rem] border border-border space-y-8">
+                                <div>
+                                    <h3 className="text-2xl font-black italic uppercase tracking-tighter">Request Banner</h3>
+                                    <p className="text-sm opacity-50 font-medium mt-2">Submit a banner for approval. It will be shown on the homepage once an admin approves it.</p>
+                                </div>
+                                <form onSubmit={handleRequestBanner} className="space-y-6">
+                                    <div className="space-y-3">
+                                        <label className="text-[10px] font-black uppercase opacity-30 tracking-widest">Banner Image</label>
+                                        <button
+                                            type="button"
+                                            onClick={() => openUploadWidget((url) => setNewBanner(p => ({ ...p, image_url: url })))}
+                                            className="w-full aspect-[21/7] rounded-[2rem] border-2 border-dashed border-foreground/10 flex flex-col items-center justify-center gap-3 hover:border-primary/50 transition-all bg-foreground/[0.02] overflow-hidden group"
+                                        >
+                                            {newBanner.image_url ? (
+                                                <img src={newBanner.image_url} alt="Preview" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                                            ) : (
+                                                <>
+                                                    <div className="p-4 bg-primary/10 rounded-2xl text-primary group-hover:scale-110 transition-transform">
+                                                        <Upload className="w-6 h-6" />
+                                                    </div>
+                                                    <span className="text-xs font-black opacity-30 uppercase">Click to upload image</span>
+                                                </>
+                                            )}
+                                        </button>
+                                    </div>
+                                    <div className="space-y-3">
+                                        <label className="text-[10px] font-black uppercase opacity-30 tracking-widest">Target Link (Optional)</label>
+                                        <div className="relative">
+                                            <input type="url" value={newBanner.link_url} onChange={e => setNewBanner(p => ({ ...p, link_url: e.target.value }))} placeholder="https://..." className="w-full glass border-none rounded-2xl p-4 pl-12 font-bold text-sm bg-background" />
+                                            <ExternalLink className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 opacity-30" />
+                                        </div>
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div className="space-y-3">
+                                            <label className="text-[10px] font-black uppercase opacity-30 tracking-widest">Starts At</label>
+                                            <input type="datetime-local" required value={newBanner.start_at} onChange={e => setNewBanner(p => ({ ...p, start_at: e.target.value }))} className="w-full glass border-none rounded-2xl p-4 font-black uppercase text-[10px] bg-background" />
+                                        </div>
+                                        <div className="space-y-3">
+                                            <label className="text-[10px] font-black uppercase opacity-30 tracking-widest">Ends At</label>
+                                            <input type="datetime-local" value={newBanner.end_at} onChange={e => setNewBanner(p => ({ ...p, end_at: e.target.value }))} className="w-full glass border-none rounded-2xl p-4 font-black uppercase text-[10px] bg-background" />
+                                        </div>
+                                    </div>
+                                    <button type="submit" disabled={bannersLoading || !newBanner.image_url} className="w-full py-5 bg-primary text-white rounded-[2rem] font-black uppercase italic tracking-tighter shadow-xl shadow-primary/20 flex items-center justify-center gap-3">
+                                        {bannersLoading ? <Loader2 className="w-6 h-6 animate-spin" /> : <Plus className="w-6 h-6" />}
+                                        Submit Request
+                                    </button>
+                                </form>
+                            </div>
+                            <div className="w-full xl:w-2/3 space-y-8">
+                                <h3 className="text-2xl font-black italic uppercase tracking-tighter">Your Banner Requests</h3>
+                                <div className="grid gap-6">
+                                    {banners.length === 0 ? (
+                                        <div className="bg-card p-20 text-center rounded-[3rem] border border-dashed border-border"><ImageIcon className="w-12 h-12 opacity-20 mx-auto" /><p className="text-xl font-black italic uppercase opacity-20 tracking-widest mt-4">No requests yet</p></div>
+                                    ) : banners.map(banner => (
+                                        <div key={banner.id} className="bg-card p-8 rounded-[3rem] border border-border flex flex-col md:flex-row gap-8 relative group overflow-hidden">
+                                            <div className="w-full md:w-56 aspect-[21/7] md:aspect-[16/7] rounded-2xl overflow-hidden bg-foreground/5 shadow-inner flex-shrink-0"><img src={banner.image_url} alt="" className="w-full h-full object-cover" /></div>
+                                            <div className="flex-grow space-y-4">
+                                                <div className="flex items-center gap-4">
+                                                    <span className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest ${banner.status === 'approved' ? 'bg-green-500/10 text-green-500' : banner.status === 'pending' ? 'bg-amber-500/10 text-amber-500' : 'bg-red-500/10 text-red-500'}`}>{banner.status}</span>
+                                                    <span className="text-[10px] font-black uppercase opacity-30">Sent {new Date(banner.created_at).toLocaleDateString()}</span>
+                                                </div>
+                                                <div className="grid grid-cols-2 gap-8">
+                                                    <div className="space-y-1"><p className="text-[10px] font-black uppercase opacity-30 tracking-widest">Display Period</p><p className="text-sm font-bold truncate">{new Date(banner.start_at).toLocaleDateString()} {banner.end_at ? ` → ${new Date(banner.end_at).toLocaleDateString()}` : ' ∞'}</p></div>
+                                                </div>
+                                                {banner.admin_comment && <div className="p-4 bg-red-500/5 rounded-2xl border border-red-500/10"><p className="text-[10px] font-black uppercase text-red-500 mb-1">Admin Feedback</p><p className="text-xs font-medium opacity-70 italic text-foreground">"{banner.admin_comment}"</p></div>}
+                                            </div>
+                                            <button onClick={() => handleDeleteBanner(banner.id)} className="absolute top-6 right-6 p-3 bg-red-500/10 text-red-500 rounded-2xl opacity-0 group-hover:opacity-100 transition-all hover:bg-red-500 hover:text-white"><Trash2 className="w-5 h-5" /></button>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 )}
 

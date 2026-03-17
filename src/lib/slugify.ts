@@ -15,6 +15,6 @@ export const slugify = (name: string): string =>
  */
 export const generateProductURL = (name: string, sku: string): string => {
     const slug = slugify(name);
-    return `#product/${slug}-${sku.toLowerCase()}`;
+    return `product/${slug}-${sku.toLowerCase()}`;
 };
 

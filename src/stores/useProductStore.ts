@@ -29,6 +29,8 @@ export interface Product {
     // Dynamic Variants
     dynamic_attributes?: Record<string, string[]>;
     pricing_matrix?: any[];
+    sale_percentage?: number;
+    is_free_delivery?: boolean;
 }
 
 interface ProductState {
@@ -134,6 +136,9 @@ export const useProductStore = create<ProductState>((set, get) => ({
             });
         } catch (err: any) {
             if (timedOut) return; // Timeout already handled it
+            if (err?.name === 'AbortError' || err?.message?.includes('aborted')) {
+                return;
+            }
             console.error('Error fetching products:', err);
             set({ error: err.message });
         } finally {

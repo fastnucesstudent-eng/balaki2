@@ -10,6 +10,7 @@ import ordersRouter from './routes/orders';
 import paymentRouter from './routes/payment';
 import shippingRouter from './routes/shipping';
 import productsRouter from './routes/products';
+import bannersRouter from './routes/banners';
 import { supabase } from './lib/supabase';
 
 const app = express();
@@ -75,6 +76,7 @@ app.use('/api/orders', ordersRouter);
 app.use('/api/payment', paymentRouter);
 app.use('/api/shipping', shippingRouter);
 app.use('/api/products', productsRouter);
+app.use('/api/banners', bannersRouter);
 
 // Secure Password Update Endpoint (Bypasses Client Auth Quirks)
 app.post('/api/update-password', async (req, res) => {

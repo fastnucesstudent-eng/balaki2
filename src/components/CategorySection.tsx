@@ -54,8 +54,8 @@ export const CategorySection = ({ activeCategory, onCategoryChange }: { activeCa
     if (displayCategories.length === 0 && !catsLoading) return null;
 
     return (
-        <section id="categories" className="py-12 px-5 max-w-7xl mx-auto">
-            <div className="flex items-center justify-between mb-8">
+        <section id="categories" className="py-6 md:py-12 px-5 max-w-7xl mx-auto">
+            <div className="flex items-center justify-between mb-4 md:mb-8">
                 <motion.div
                     initial={{ opacity: 0, x: -20 }}
                     whileInView={{ opacity: 1, x: 0 }}

@@ -291,17 +291,27 @@ const sendStatusUpdateEmail = async (email: string, order: any, status: string, 
     let reviewHtml = '';
     if (status === 'delivered') {
         try {
+            // Fetch items for this order
             const { data: items } = await supabase
                 .from('order_items')
                 .select('*, products(name)')
                 .eq('order_id', order.id);
 
-            if (items && items.length > 0) {
+            // Fetch existing reviews for this order
+            const { data: existingReviews } = await supabase
+                .from('reviews')
+                .select('product_id')
+                .eq('order_id', order.id);
+
+            const reviewedProductIds = new Set(existingReviews?.map(r => r.product_id) || []);
+            const itemsToReview = items?.filter((item: any) => !reviewedProductIds.has(item.product_id)) || [];
+
+            if (itemsToReview.length > 0) {
                 const secret = process.env.SUPABASE_SERVICE_ROLE_KEY || 'tarzify-review-secret';
                 // Production backend URL
                 const baseUrl = process.env.BACKEND_URL || (process.env.NODE_ENV === 'production' ? 'https://backend.tarzify.com/api' : 'http://localhost:5000/api');
 
-                const itemsList = items.map((item: any) => {
+                const itemsList = itemsToReview.map((item: any) => {
                     const stars = [1, 2, 3, 4, 5].map(star => {
                         const sig = crypto.createHmac('sha256', secret)
                             .update(`${order.id}:${item.product_id}:${order.user_id}:${star}`)
@@ -623,7 +633,7 @@ router.patch('/assign-tracking/:id', async (req, res) => {
     }
 });
 
-// Direct Review Submission from Email
+// Direct Review Redirect from Email to Frontend
 router.get('/rate-item', async (req, res) => {
     const { order_id, product_id, user_id, rating, sig } = req.query;
 
@@ -632,7 +642,7 @@ router.get('/rate-item', async (req, res) => {
     }
 
     try {
-        // 1. Verify Signature
+        // 1. Verify Signature (just to be sure before redirecting)
         const secret = process.env.SUPABASE_SERVICE_ROLE_KEY || 'tarzify-review-secret';
         const expectedSig = crypto.createHmac('sha256', secret)
             .update(`${order_id}:${product_id}:${user_id}:${rating}`)
@@ -643,39 +653,92 @@ router.get('/rate-item', async (req, res) => {
             return res.status(403).send('Invalid or expired rating link.');
         }
 
-        // 2. Insert/Upsert Review
+        // 2. Redirect to Frontend Review Page
+        const baseUrl = process.env.FRONTEND_URL || 'https://tarzify.com';
+        const redirectUrl = `${baseUrl}/#rate-product?order_id=${order_id}&product_id=${product_id}&user_id=${user_id}&rating=${rating}&sig=${sig}`;
+        
+        res.redirect(redirectUrl);
+    } catch (error: any) {
+        console.error('Review redirect error:', error);
+        res.status(500).send('Error processing review link. Please try manually on the website.');
+    }
+});
+
+// Full Review Submission API (Supports images and comments)
+router.post('/submit-review', async (req, res) => {
+    const { order_id, product_id, user_id, rating, comment, image_urls, sig } = req.body;
+
+    if (!order_id || !product_id || !user_id || !rating) {
+        return res.status(400).json({ success: false, error: 'Missing review data.' });
+    }
+
+    try {
+        // 1. Verify Signature if provided (essential for email-triggered reviews)
+        if (sig) {
+            const secret = process.env.SUPABASE_SERVICE_ROLE_KEY || 'tarzify-review-secret';
+            const expectedSig = crypto.createHmac('sha256', secret)
+                .update(`${order_id}:${product_id}:${user_id}:${rating}`)
+                .digest('hex')
+                .substring(0, 16);
+
+            if (sig !== expectedSig) {
+                return res.status(403).json({ success: false, error: 'Invalid review signature.' });
+            }
+        } else {
+            // If no signature, the user MUST be the one who owns the order
+            // (This check should also be handled by Supabase RLS, but we can double check here)
+            const { data: order } = await supabase
+                .from('orders')
+                .select('user_id, status')
+                .eq('id', order_id)
+                .single();
+
+            if (!order || order.user_id !== user_id) {
+                return res.status(403).json({ success: false, error: 'Unauthorized to review this order.' });
+            }
+            if (order.status !== 'delivered') {
+                return res.status(400).json({ success: false, error: 'Product must be delivered before reviewing.' });
+            }
+        }
+
+        // 2. Strict Payload Validation
+        const safeComment = (comment || '').substring(0, 2000); // Guard against massive text payloads
+        
+        const safeImageUrls = Array.isArray(image_urls) ? image_urls : [];
+        if (safeImageUrls.length > 5) {
+            return res.status(400).json({ success: false, error: 'Maximum 5 images allowed per review.' });
+        }
+
+        // URL White-listing: only allow Cloudinary URLs for security
+        const isSecure = safeImageUrls.every(url => 
+            typeof url === 'string' && url.startsWith('https://res.cloudinary.com/')
+        );
+
+        if (!isSecure) {
+            return res.status(400).json({ success: false, error: 'Invalid image source found. Please use the official upload tool.' });
+        }
+
+        // 3. Upsert Review
         const { error } = await supabase
             .from('reviews')
             .upsert({
+                order_id: Number(order_id),
                 product_id: Number(product_id),
                 user_id: String(user_id),
                 rating: Number(rating),
-                comment: 'Rated via Email',
+                comment: safeComment,
+                image_urls: safeImageUrls,
                 created_at: new Date().toISOString()
             }, {
-                onConflict: 'product_id,user_id'
+                onConflict: 'product_id,order_id'
             });
 
         if (error) throw error;
 
-        // 3. Redirect to Product Page with success flag
-        // Fetch product info for the slug
-        const { data: product } = await supabase
-            .from('products')
-            .select('name, sku')
-            .eq('id', product_id)
-            .single();
-
-        const baseUrl = process.env.FRONTEND_URL || 'https://tarzify.com';
-        if (product) {
-            const productSlug = `${product.name.toLowerCase().replace(/[^a-z0-9]/g, '-')}-${product.sku.toLowerCase()}`;
-            return res.redirect(`${baseUrl}/#product/${productSlug}?review=success`);
-        }
-
-        res.redirect(`${baseUrl}/?review=success`);
+        res.json({ success: true, message: 'Review submitted successfully!' });
     } catch (error: any) {
         console.error('Review submission error:', error);
-        res.status(500).send('Error submitting review. Please try manually on the website.');
+        res.status(500).json({ success: false, error: error.message });
     }
 });
 

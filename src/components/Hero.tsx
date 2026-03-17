@@ -26,7 +26,7 @@ export const Hero = () => {
     };
 
     return (
-        <section className="relative min-h-[90vh] md:min-h-screen flex items-center justify-center pt-20 md:pt-24 overflow-hidden">
+        <section className="relative min-h-[50vh] md:min-h-[65vh] flex items-center justify-center pt-20 md:pt-28 pb-12 md:pb-20 overflow-hidden">
             {/* Background Orbs */}
             <div className="absolute top-1/4 left-1/4 w-64 md:w-96 h-64 md:h-96 bg-primary/20 rounded-full blur-[80px] md:blur-[100px] animate-pulse" />
             <div className="absolute bottom-1/4 right-1/4 w-64 md:w-96 h-64 md:h-96 bg-accent/20 rounded-full blur-[80px] md:blur-[100px] animate-pulse" style={{ animationDelay: '1s' }} />
@@ -38,25 +38,25 @@ export const Hero = () => {
                     animate="visible"
                     className="flex flex-col items-center"
                 >
-                    <h1 className="font-black mb-8 md:mb-12 tracking-tighter flex flex-col items-center uppercase leading-none overflow-visible">
-                        <div className="flex flex-wrap justify-center pb-6 md:pb-14 overflow-visible">
+                    <h1 className="font-black mb-6 md:mb-12 tracking-tighter flex flex-col items-center uppercase leading-none overflow-visible">
+                        <div className="flex flex-wrap justify-center pb-4 md:pb-8 overflow-visible">
                             {"TARZIFY".split("").map((char, index) => (
                                 <motion.span
                                     key={index}
                                     variants={charVariants}
-                                    className="inline-block text-[3.5rem] sm:text-[6rem] md:text-[10rem] bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent italic leading-none z-20 font-black px-1 md:px-2"
+                                    className="inline-block text-[3rem] sm:text-[5rem] md:text-[7.5rem] bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent italic leading-none z-20 font-black px-1 md:px-2"
                                 >
                                     {char}
                                 </motion.span>
                             ))}
                         </div>
 
-                        <div className="relative group px-4 -mt-6 md:-mt-12 z-10 overflow-visible text-center flex flex-wrap justify-center">
+                        <div className="relative group px-4 -mt-4 md:-mt-8 z-10 overflow-visible text-center flex flex-wrap justify-center">
                             {"Premium".split("").map((char, index) => (
                                 <motion.span
                                     key={index}
                                     variants={charVariants}
-                                    className="text-[1.8rem] sm:text-[3.5rem] md:text-[5.4rem] text-foreground inline-block leading-none font-bold px-1"
+                                    className="text-[1.5rem] sm:text-[3rem] md:text-[4.5rem] text-foreground inline-block leading-none font-bold px-1"
                                 >
                                     {char}
                                 </motion.span>
@@ -68,14 +68,14 @@ export const Hero = () => {
                                 <motion.span
                                     key={index}
                                     variants={charVariants}
-                                    className={`text-[0.9rem] sm:text-[1.8rem] md:text-[2.7rem] bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent italic leading-none inline-block font-bold px-1 ${char === " " ? "mx-1.5 md:mx-2" : ""}`}
+                                    className={`text-[0.8rem] sm:text-[1.5rem] md:text-[2.2rem] bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent italic leading-none inline-block font-bold px-1 ${char === " " ? "mx-1.5 md:mx-2" : ""}`}
                                 >
                                     {char}
                                 </motion.span>
                             ))}
                         </div>
                     </h1>
-                    <p className="text-sm sm:text-lg md:text-xl text-foreground/60 max-w-2xl md:max-w-3xl mx-auto mb-8 md:mb-10 leading-relaxed font-medium px-4">
+                    <p className="text-sm sm:text-base md:text-lg text-foreground/60 max-w-2xl md:max-w-3xl mx-auto mb-5 md:mb-8 leading-relaxed font-medium px-4">
                         Discover a complete shopping ecosystem where premium quality meets unparalleled convenience. Delivered with trust and speed across Pakistan.
                     </p>
 

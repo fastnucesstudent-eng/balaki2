@@ -22,10 +22,12 @@ interface ProductCardProps {
     total_reviews?: number;
     pricing_matrix?: any[];
     onFly?: (e: React.MouseEvent) => void;
+    sale_percentage?: number;
+    is_free_delivery?: boolean;
 }
 
 export const ProductCard = (product: ProductCardProps) => {
-    const { name, price, image, category, stock = 1, sku, image_urls = [], compare_at_price, avg_rating, pricing_matrix, onFly } = product;
+    const { name, price, image, category, stock = 1, sku, image_urls = [], compare_at_price, avg_rating, pricing_matrix, onFly, sale_percentage = 0, is_free_delivery = false } = product;
     const addItem = useCartStore((state) => state.addItem);
     const [mainImageError, setMainImageError] = useState(false);
     const [secondaryImageError, setSecondaryImageError] = useState(false);
@@ -70,11 +72,30 @@ export const ProductCard = (product: ProductCardProps) => {
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             whileHover={{ y: -4 }}
-            onClick={() => { window.location.hash = generateProductURL(name, sku); }}
+            onClick={() => { window.location.hash = '#' + generateProductURL(name, sku); }}
             className={`group relative bg-white dark:bg-zinc-900/50 rounded-2xl md:rounded-[2rem] overflow-hidden border border-gray-100 dark:border-white/5 flex flex-col h-full cursor-pointer hover:shadow-[0_20px_40px_rgba(0,0,0,0.05)] transition-all duration-500 ${isOOS ? 'opacity-90' : ''}`}
         >
             {/* Image Container */}
-            <div className="relative aspect-square overflow-hidden bg-gray-50 dark:bg-zinc-800 group">
+            <div className="relative aspect-[4/5] overflow-hidden bg-gray-50 dark:bg-zinc-800/20">
+                {/* Badges */}
+                <div className="absolute top-3 left-3 z-10 flex flex-col gap-2">
+                    {sale_percentage > 0 && (
+                        <div className="bg-primary text-white text-[10px] font-black px-2 py-1 rounded-lg shadow-lg uppercase italic">
+                            -{sale_percentage}% OFF
+                        </div>
+                    )}
+                    {is_free_delivery && (
+                        <div className="bg-green-500 text-white text-[10px] font-black px-2 py-1 rounded-lg shadow-lg uppercase italic">
+                            Free Delivery
+                        </div>
+                    )}
+                    {/* OOS Overlay - Kept for functionality */}
+                    {isOOS && (
+                        <span className="px-3 py-1 bg-black text-white text-[8px] font-black uppercase tracking-[0.2em] rounded-full backdrop-blur-md">
+                            Sold Out
+                        </span>
+                    )}
+                </div>
                 {image && (
                     <img
                         src={mainImageError ? PLACEHOLDER_IMAGE : image}
