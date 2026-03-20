@@ -5,9 +5,7 @@ const router = express.Router();
 router.post('/calculate', async (req, res) => {
     try {
         const { items = [] } = req.body;
-        const fs = require('fs');
-        const logData = `--- REQUEST ${new Date().toISOString()} ---\n` + JSON.stringify(req.body, null, 2) + '\n';
-        fs.appendFileSync('debug_shipping.log', logData);
+        console.log(`[Shipping] Request received with ${items.length} items`);
         
         const BASE_PRICE_STANDARD = 250;
         const merchantGroups: Record<string, number> = {};

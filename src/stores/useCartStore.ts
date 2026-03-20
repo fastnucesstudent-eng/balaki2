@@ -107,7 +107,7 @@ export const useCartStore = create<CartState>()(
                         .delete()
                         .eq('user_id', user.id)
                         .eq('product_id', id)
-                        .eq('variant_combo', variant_combo || {})
+                        .eq('variant_combo', JSON.stringify(variant_combo || {}))
                         .then();
                 }
             },
