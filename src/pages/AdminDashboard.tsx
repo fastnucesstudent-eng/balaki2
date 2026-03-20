@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { LayoutDashboard, ShoppingBag, Package, Users, Bell, Settings, ArrowUpRight, Search, Plus, Save, Loader2, Menu, X, Trash2, Eye, Upload, Edit2, Image as ImageIcon } from 'lucide-react';
+import { LayoutDashboard, ShoppingBag, Package, Users, Bell, Settings, ArrowUpRight, Search, Plus, Save, Loader2, Menu, X, Trash2, Eye, Upload, Edit2, Image as ImageIcon, Store, Check, Ban } from 'lucide-react';
 import { ReceiptModal } from '../components/ReceiptModal';
 import { useProducts } from '../hooks/useProducts';
 import { supabase } from '../lib/supabase';
@@ -11,7 +11,7 @@ import { useCategories } from '../hooks/useCategories';
 
 export const AdminDashboard = () => {
     const [activeTab, setActiveTab] = useState('overview');
-    const { products, loading: productsLoading, refetch } = useProducts();
+    const { products, loading: productsLoading, refetch } = useProducts(true);
     const { stats, loading: statsLoading, refetch: refetchStats } = useAdminStats();
     const { categories, addCategory, updateCategory, deleteCategory, loading: categoriesLoading } = useCategories();
 
@@ -32,6 +32,8 @@ export const AdminDashboard = () => {
     const [dataLoading, setDataLoading] = useState(false);
     const [selectedOrderToView, setSelectedOrderToView] = useState<any | null>(null);
     const [articleToDelete, setArticleToDelete] = useState<number | null>(null);
+    const [merchants, setMerchants] = useState<any[]>([]);
+    const [merchantLoading, setMerchantLoading] = useState(false);
 
     // Banners State
     const [banners, setBanners] = useState<any[]>([]);
@@ -141,10 +143,10 @@ export const AdminDashboard = () => {
             if (activeTab === 'orders') {
                 const { data } = await supabase
                     .from('orders')
-                    .select('*, customer:user_id(id, full_name, email), order_items(*, products(*))')
+                    .select('*, customer:profiles!user_id(id, full_name, email), order_items(*, products(*))')
                     .order('created_at', { ascending: false });
                 if (data) {
-                    const mapped = data.map(order => ({ ...order, profiles: order.customer }));
+                    const mapped = data.map((order: any) => ({ ...order, profiles: order.customer }));
                     setOrders(mapped);
                 }
             }
@@ -224,9 +226,18 @@ export const AdminDashboard = () => {
                 if (data) setAllVouchers(data);
                 if (_errorV) console.error(_errorV);
             }
+            if (activeTab === 'merchants') {
+                const { data, error } = await supabase
+                    .from('profiles')
+                    .select('*')
+                    .eq('role', 'merchant')
+                    .order('created_at', { ascending: false });
+                if (data) setMerchants(data);
+                if (error) useToastStore.getState().show(error.message, 'error');
+            }
             setDataLoading(false);
         };
-        const tabsRequiringData = ['orders', 'customers', 'carts', 'banners', 'articles', 'vouchers'];
+        const tabsRequiringData = ['orders', 'customers', 'carts', 'banners', 'articles', 'vouchers', 'merchants'];
         if (tabsRequiringData.includes(activeTab)) fetchData();
     }, [activeTab]);
 
@@ -266,11 +277,56 @@ export const AdminDashboard = () => {
         }
     };
 
+    const handleUpdateMerchantStatus = async (merchantId: string, status: 'approved' | 'rejected' | 'paused' | 'active', storeSlug?: string) => {
+        const finalStatus = status === 'active' ? 'approved' : status;
+        setMerchantLoading(true);
+        try {
+            // 1. Update status in Supabase
+            const { error } = await supabase
+                .from('profiles')
+                .update({ merchant_status: finalStatus })
+                .eq('id', merchantId);
+
+            if (error) throw error;
+            useToastStore.getState().show(`Merchant ${finalStatus} successfully`, 'success');
+            
+            // 2. If approved, trigger QR generation (Phase 4)
+            if (finalStatus === 'approved' && storeSlug) {
+                try {
+                    const res = await fetch(`${import.meta.env.VITE_API_URL}/merchants/generate-qr`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ merchantId, storeSlug })
+                    });
+                    if (res.ok) {
+                        useToastStore.getState().show('Store QR Code generated!', 'success');
+                    }
+                } catch (qrErr) {
+                    console.error('QR Generation failed:', qrErr);
+                    // Don't fail the whole status update if just QR fails, but notify
+                    useToastStore.getState().show('Merchant approved, but QR generation failed.', 'error');
+                }
+            }
+
+            // 3. Re-fetch merchants
+            const { data } = await supabase
+                .from('profiles')
+                .select('*')
+                .eq('role', 'merchant')
+                .order('created_at', { ascending: false });
+            if (data) setMerchants(data);
+        } catch (err: any) {
+            useToastStore.getState().show('Failed to update status: ' + err.message, 'error');
+        } finally {
+            setMerchantLoading(false);
+        }
+    };
+
     const handleSeed = async () => {
-        const { VITE_API_URL } = import.meta.env;
+        const VITE_API_URL = import.meta.env.VITE_API_URL || '';
         const isLocal = VITE_API_URL.includes('localhost') || VITE_API_URL.includes('127.0.0.1');
 
-        if (!confirm(`This will seed demo products to: ${VITE_API_URL}\n\n${isLocal ? 'DEVELOPMENT MODE: hitting local server' : 'PRODUCTION MODE: hitting live api'}\n\nContinue?`)) return;
+        if (!confirm(`This will seed demo products to: ${VITE_API_URL || 'DEFAULT'}\n\n${isLocal ? 'DEVELOPMENT MODE: hitting local server' : 'PRODUCTION MODE: hitting live api'}\n\nContinue?`)) return;
 
         setDataLoading(true);
         try {
@@ -644,6 +700,7 @@ export const AdminDashboard = () => {
                     { id: 'categories', label: 'Categories', icon: Menu },
                     { id: 'orders', label: 'Orders', icon: ShoppingBag },
                     { id: 'customers', label: 'Customers', icon: Users },
+                    { id: 'merchants', label: 'Merchants', icon: Store },
                     { id: 'carts', label: 'Customer Carts', icon: ShoppingBag },
                     { id: 'banners', label: 'Banners', icon: ImageIcon },
                     { id: 'vouchers', label: 'Vouchers', icon: Bell },
@@ -731,6 +788,7 @@ export const AdminDashboard = () => {
                                     <thead className="bg-foreground/[0.02]">
                                         <tr className="text-xs font-black uppercase tracking-widest opacity-30 border-b border-foreground/5">
                                             <th className="px-6 py-4">Product / SKU</th>
+                                            <th className="px-6 py-4">Merchant</th>
                                             <th className="px-6 py-4">Category</th>
                                             <th className="px-6 py-4">Stock</th>
                                             <th className="px-6 py-4">Price</th>
@@ -752,6 +810,11 @@ export const AdminDashboard = () => {
                                                             <div className="font-bold truncate max-w-[200px]">{product.name}</div>
                                                             <div className="text-xs opacity-50 font-mono">{product.sku}</div>
                                                         </div>
+                                                    </td>
+                                                    <td className="px-6 py-4">
+                                                        <span className="text-xs font-black uppercase tracking-widest text-primary bg-primary/10 px-2 py-1 rounded-lg">
+                                                            {product.merchant_name}
+                                                        </span>
                                                     </td>
                                                     <td className="px-6 py-4 text-sm opacity-70">{product.category}</td>
                                                     <td className="px-6 py-4">
@@ -1087,6 +1150,174 @@ export const AdminDashboard = () => {
                         </div>
                     </motion.div>
                 )}
+                {activeTab === 'merchants' && (
+                    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6">
+                        <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+                            <h2 className="text-2xl font-black tracking-tighter uppercase italic">Merchant Management</h2>
+                            <div className="flex items-center gap-2">
+                                <span className="px-3 py-1 bg-primary/10 text-primary text-[10px] font-black uppercase rounded-full">
+                                    {merchants.filter(m => m.merchant_status === 'pending').length} Pending
+                                </span>
+                            </div>
+                        </div>
+
+                        <div className="glass rounded-[2rem] border-white/5 overflow-hidden">
+                            {/* Desktop Table */}
+                            <div className="hidden xl:block overflow-x-auto">
+                                <table className="w-full text-left">
+                                    <thead className="bg-foreground/[0.02] text-xs font-black uppercase opacity-30">
+                                        <tr>
+                                            <th className="px-6 py-4">Store / Owner</th>
+                                            <th className="px-6 py-4">Status</th>
+                                            <th className="px-6 py-4">Business Info</th>
+                                            <th className="px-6 py-4">Banking</th>
+                                            <th className="px-6 py-4 text-right">Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-foreground/5 font-bold relative">
+                                        {(dataLoading || merchantLoading) && (
+                                            <div className="absolute inset-0 bg-background/50 backdrop-blur-[2px] z-10 flex items-center justify-center">
+                                                <Loader2 className="w-8 h-8 text-primary animate-spin" />
+                                            </div>
+                                        )}
+                                        {dataLoading && merchants.length === 0 ? (
+                                            [1, 2, 3].map(i => <tr key={i} className="animate-pulse"><td colSpan={5} className="px-6 py-4 bg-foreground/5 h-12" /></tr>)
+                                        ) : merchants.length === 0 ? (
+                                            <tr><td colSpan={5} className="px-10 py-20 text-center opacity-30 italic font-bold uppercase tracking-widest">No merchants found</td></tr>
+                                        ) : merchants.map(m => (
+                                            <tr key={m.id} className="hover:bg-foreground/[0.01]">
+                                                <td className="px-6 py-4">
+                                                    <div className="flex items-center gap-3">
+                                                        <div className="w-10 h-10 rounded-xl bg-primary/10 border border-primary/20 overflow-hidden flex-shrink-0">
+                                                            {m.logo_url ? <img src={m.logo_url} className="w-full h-full object-cover" /> : <Store className="w-5 h-5 m-2.5 text-primary" />}
+                                                        </div>
+                                                        <div>
+                                                            <div className="text-sm font-black uppercase italic tracking-tighter">{m.store_name || 'Unnamed Store'}</div>
+                                                            <div className="text-[10px] opacity-40 font-medium">{m.full_name} ({m.email})</div>
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                                <td className="px-6 py-4">
+                                                    <span className={`px-2 py-1 rounded-full text-[9px] uppercase font-black tracking-widest ${
+                                                        m.merchant_status === 'approved' ? 'bg-green-500/10 text-green-500' :
+                                                        m.merchant_status === 'pending' ? 'bg-amber-500/10 text-amber-500' :
+                                                        'bg-red-500/10 text-red-500'
+                                                    }`}>
+                                                        {m.merchant_status}
+                                                    </span>
+                                                </td>
+                                                <td className="px-6 py-4">
+                                                    <div className="text-[10px] space-y-0.5">
+                                                        <p><span className="opacity-30">NTN:</span> {m.ntn || 'N/A'}</p>
+                                                        <p className="truncate max-w-[150px]"><span className="opacity-30">Addr:</span> {m.business_address || 'N/A'}</p>
+                                                    </div>
+                                                </td>
+                                                <td className="px-6 py-4">
+                                                    <div className="text-[10px] space-y-0.5">
+                                                        <p className="truncate max-w-[150px]"><span className="opacity-30">Acc:</span> {m.bank_account || 'N/A'}</p>
+                                                        <p><span className="opacity-30">Title:</span> {m.bank_title || 'N/A'}</p>
+                                                    </div>
+                                                </td>
+                                                <td className="px-6 py-4 text-right">
+                                                    <div className="flex items-center justify-end gap-2">
+                                                        {m.merchant_status === 'pending' && (
+                                                            <>
+                                                                <button 
+                                                                    onClick={() => handleUpdateMerchantStatus(m.id, 'approved', m.store_slug)}
+                                                                    className="p-2 bg-green-500/10 text-green-500 hover:bg-green-500 hover:text-white rounded-xl transition-all"
+                                                                    title="Approve Merchant"
+                                                                >
+                                                                    <Check className="w-4 h-4" />
+                                                                </button>
+                                                                <button 
+                                                                    onClick={() => handleUpdateMerchantStatus(m.id, 'rejected', m.store_slug)}
+                                                                    className="p-2 bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white rounded-xl transition-all"
+                                                                    title="Reject Application"
+                                                                >
+                                                                    <Ban className="w-4 h-4" />
+                                                                </button>
+                                                            </>
+                                                        )}
+                                                        {m.merchant_status === 'approved' && (
+                                                            <button 
+                                                                onClick={() => handleUpdateMerchantStatus(m.id, 'paused')}
+                                                                className="px-3 py-1.5 border border-amber-500/30 text-amber-500 text-[10px] font-black uppercase rounded-xl hover:bg-amber-500/10 transition-all"
+                                                            >
+                                                                Pause Store
+                                                            </button>
+                                                        )}
+                                                        {m.merchant_status === 'paused' && (
+                                                            <button 
+                                                                onClick={() => handleUpdateMerchantStatus(m.id, 'approved', m.store_slug)}
+                                                                className="px-3 py-1.5 border border-green-500/30 text-green-500 text-[10px] font-black uppercase rounded-xl hover:bg-green-500/10 transition-all"
+                                                            >
+                                                                Unpause Store
+                                                            </button>
+                                                        )}
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+
+                            {/* Mobile/Tablet Card View */}
+                            <div className="xl:hidden divide-y divide-foreground/5">
+                                {merchants.map(m => (
+                                    <div key={m.id} className="p-6 space-y-6">
+                                        <div className="flex justify-between items-start">
+                                            <div className="flex items-center gap-4">
+                                                <div className="w-12 h-12 rounded-2xl bg-primary/10 border border-primary/20 overflow-hidden flex-shrink-0">
+                                                    {m.logo_url ? <img src={m.logo_url} className="w-full h-full object-cover" /> : <Store className="w-6 h-6 m-3 text-primary" />}
+                                                </div>
+                                                <div>
+                                                    <h4 className="font-black italic uppercase tracking-tighter">{m.store_name || 'Unnamed Store'}</h4>
+                                                    <p className="text-[10px] font-bold opacity-40 uppercase tracking-widest">{m.full_name}</p>
+                                                </div>
+                                            </div>
+                                            <span className={`px-3 py-1 rounded-full text-[9px] uppercase font-black tracking-widest ${
+                                                m.merchant_status === 'approved' ? 'bg-green-500/10 text-green-500' :
+                                                m.merchant_status === 'pending' ? 'bg-amber-500/10 text-amber-500' :
+                                                'bg-red-500/10 text-red-500'
+                                            }`}>
+                                                {m.merchant_status}
+                                            </span>
+                                        </div>
+
+                                        <div className="grid grid-cols-2 gap-4 py-4 border-y border-foreground/5">
+                                            <div className="space-y-1">
+                                                <p className="text-[10px] font-black uppercase opacity-30 italic">Registration Date</p>
+                                                <p className="text-xs font-bold">{new Date(m.created_at).toLocaleDateString()}</p>
+                                            </div>
+                                            <div className="space-y-1">
+                                                <p className="text-[10px] font-black uppercase opacity-30 italic">NTN Number</p>
+                                                <p className="text-xs font-bold">{m.ntn || 'Not provided'}</p>
+                                            </div>
+                                        </div>
+
+                                        <div className="flex gap-2">
+                                            {m.merchant_status === 'pending' ? (
+                                                <>
+                                                    <button onClick={() => handleUpdateMerchantStatus(m.id, 'approved', m.store_slug)} className="flex-1 py-3 bg-green-500 text-white text-[10px] font-black uppercase rounded-xl shadow-lg shadow-green-500/20">Approve</button>
+                                                    <button onClick={() => handleUpdateMerchantStatus(m.id, 'rejected')} className="flex-1 py-3 bg-red-500 text-white text-[10px] font-black uppercase rounded-xl shadow-lg shadow-red-500/20">Reject</button>
+                                                </>
+                                            ) : (
+                                                <button 
+                                                    onClick={() => handleUpdateMerchantStatus(m.id, m.merchant_status === 'paused' ? 'approved' : 'paused', m.store_slug)}
+                                                    className={`flex-1 py-3 text-[10px] font-black uppercase rounded-xl border ${m.merchant_status === 'paused' ? 'border-green-500 text-green-500 bg-green-500/5' : 'border-amber-500 text-amber-500 bg-amber-500/5'}`}
+                                                >
+                                                    {m.merchant_status === 'paused' ? 'Resume Store' : 'Pause Store'}
+                                                </button>
+                                            )}
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    </motion.div>
+                )}
+
 
                 {activeTab === 'carts' && (
                     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6">
@@ -1192,12 +1423,12 @@ export const AdminDashboard = () => {
                                 </form>
                             </div>
 
-                            {/* Banner List */}
+                            {/* High-End Banner Management */}
                             <div className="w-full xl:w-2/3 space-y-6">
-                                <h3 className="text-xl font-black italic uppercase tracking-tighter">Active & Merchant Banners</h3>
-                                <div className="grid gap-6">
+                                <h3 className="text-2xl font-black italic uppercase tracking-tighter">Active & Merchant Banners</h3>
+                                <div className="grid gap-8">
                                     {banners.length === 0 ? (
-                                        <div className="glass p-12 text-center rounded-[3rem] opacity-30 font-black uppercase italic tracking-widest text-xl">No banners found</div>
+                                        <div className="glass p-24 text-center rounded-[3rem] opacity-30 font-black uppercase italic tracking-widest text-xl border-white/5">No banners currently live</div>
                                     ) : banners.map(banner => {
                                         const now = new Date();
                                         const start = new Date(banner.start_at);

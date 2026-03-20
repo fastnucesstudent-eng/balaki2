@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { motion } from 'framer-motion';
-import { Search, Package, Truck, CheckCircle, Clock, X, Eye, Camera } from 'lucide-react';
+import { Search, Package, Truck, CheckCircle, Clock, X, Eye, Camera, ArrowUpRight } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 
 export const TrackOrder = ({ onClose, initialOrderId }: { onClose: () => void, initialOrderId?: string }) => {
@@ -86,102 +86,130 @@ export const TrackOrder = ({ onClose, initialOrderId }: { onClose: () => void, i
                         <X className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
                     </button>
 
-                    <div className="text-center mb-8 sm:mb-10 flex flex-col items-center">
-                        <img src="/logo.png" alt="TARZIFY Logo" className="w-12 h-12 sm:w-16 sm:h-16 rounded-full object-cover border-2 border-primary/30 shadow-2xl mb-4" />
-                        <h2 className="text-3xl sm:text-4xl font-black italic tracking-tighter mb-3 uppercase text-white">TRACK YOUR ORDER</h2>
-                        <p className="text-xs sm:text-sm opacity-50 text-white font-medium max-w-xs sm:max-w-none">Enter your Order ID (e.g., BS123456) to see live status.</p>
+                    <div className="text-center mb-10 sm:mb-12 flex flex-col items-center">
+                        <div className="relative group mb-6">
+                            <div className="absolute -inset-4 bg-primary/20 rounded-full blur-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-700" />
+                            <img src="/logo.png" alt="TARZIFY Logo" className="w-16 h-16 sm:w-20 sm:h-20 rounded-full object-cover border-2 border-primary/30 shadow-2xl relative z-10" />
+                        </div>
+                        <h2 className="text-4xl sm:text-5xl font-black italic tracking-tighter mb-4 uppercase text-white leading-none">
+                            TRACK <span className="text-primary">ORDER</span>
+                        </h2>
+                        <p className="text-[10px] sm:text-xs font-black uppercase tracking-[0.3em] text-white/40 max-w-xs sm:max-w-none">Premium Real-Time Logistics Monitoring</p>
                     </div>
 
-                    <form onSubmit={handleTrack} className="flex flex-col sm:flex-row gap-3 sm:gap-4 mb-10">
-                        <div className="flex-grow relative">
-                            <Search className="absolute left-5 top-1/2 -translate-y-1/2 text-primary w-5 h-5 opacity-50" />
+                    <form onSubmit={handleTrack} className="flex flex-col sm:flex-row gap-4 mb-12">
+                        <div className="flex-grow relative group">
+                            <div className="absolute -inset-1 bg-white/5 rounded-2xl group-focus-within:bg-primary/20 transition-all duration-500" />
+                            <Search className="absolute left-5 top-1/2 -translate-y-1/2 text-primary w-5 h-5 opacity-50 z-10" />
                             <input
                                 type="text"
                                 value={orderId}
                                 onChange={(e) => setOrderId(e.target.value)}
                                 placeholder="Order ID (e.g. BS123456)"
-                                className="w-full bg-white/5 border border-white/10 rounded-2xl py-4 pl-12 pr-6 text-base font-bold outline-none focus:ring-2 ring-primary/50 text-white placeholder:text-white/20 transition-all"
+                                className="w-full bg-[#0d0d0f] border border-white/5 rounded-2xl py-5 pl-14 pr-6 text-base font-black outline-none focus:border-primary/50 text-white placeholder:text-white/10 transition-all relative z-10 uppercase tracking-widest"
                             />
                         </div>
-                        <button disabled={loading} className="px-8 py-4 bg-primary text-white rounded-2xl font-black tracking-widest hover:scale-[1.02] active:scale-95 transition-all disabled:opacity-50 text-xs sm:text-sm shadow-lg shadow-primary/20">
-                            {loading ? 'TRACKING...' : 'TRACK'}
+                        <button disabled={loading} className="px-10 py-5 bg-white text-black rounded-2xl font-black tracking-widest hover:scale-[1.05] active:scale-95 transition-all disabled:opacity-50 text-xs sm:text-sm shadow-2xl relative group overflow-hidden">
+                            <span className="relative z-10 uppercase italic">{loading ? 'SEARCHING...' : 'LOCATE ORDER'}</span>
+                            <div className="absolute inset-0 bg-primary translate-y-full group-hover:translate-y-0 transition-transform duration-300" />
                         </button>
                     </form>
 
                     {error && (
-                        <div className="p-4 bg-red-500/10 border border-red-500/20 text-red-500 rounded-xl text-center text-xs font-black uppercase tracking-widest mb-8">
-                            {error}
-                        </div>
+                        <motion.div 
+                            initial={{ opacity: 0, y: -10 }} 
+                            animate={{ opacity: 1, y: 0 }}
+                            className="p-5 bg-red-500/10 border border-red-500/20 text-red-500 rounded-2xl text-center text-[10px] font-black uppercase tracking-widest mb-10 flex items-center justify-center gap-3"
+                        >
+                            <X className="w-4 h-4" /> {error}
+                        </motion.div>
                     )}
 
                     {status && (
-                        <div className="space-y-8">
-                            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 pb-8 border-b border-white/5">
-                                <div>
-                                    <h3 className="text-[10px] font-black opacity-40 uppercase tracking-widest mb-1 text-white">Order ID</h3>
-                                    <p className="text-xl sm:text-2xl font-black text-primary">#{status.order_number}</p>
+                        <div className="space-y-12">
+                            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-8 pb-10 border-b border-white/5 relative">
+                                <div className="space-y-1">
+                                    <h3 className="text-[9px] font-black text-primary uppercase tracking-[0.3em] mb-1">Authenticated ID</h3>
+                                    <p className="text-3xl sm:text-4xl font-black text-white italic tracking-tighter">#{status.order_number}</p>
                                 </div>
-                                <div className="text-left sm:text-right">
-                                    <h3 className="text-[10px] font-black opacity-40 uppercase tracking-widest mb-1 text-white">Total Amount</h3>
-                                    <p className="text-xl sm:text-2xl font-black text-white">Rs. {status.total_amount.toLocaleString()}</p>
+                                <div className="text-left sm:text-right space-y-1">
+                                    <h3 className="text-[9px] font-black opacity-30 uppercase tracking-[0.3em] mb-1 text-white">Investment Value</h3>
+                                    <p className="text-3xl sm:text-4xl font-black text-white italic tracking-tighter">Rs. {status.total_amount.toLocaleString()}</p>
                                 </div>
                             </div>
 
                             {/* Tracker Steps */}
-                            <div className="relative flex justify-between">
-                                {/* Connecting Line */}
-                                <div className="absolute top-1/2 left-0 w-full h-1 bg-foreground/5 -z-10 -translate-y-1/2" />
-                                <div
-                                    className="absolute top-1/2 left-0 h-1 bg-primary -z-10 -translate-y-1/2 transition-all duration-1000"
-                                    style={{ width: `${(getStatusStep(status.status) / 3) * 100}%` }}
-                                />
+                            <div className="relative pt-4 pb-8">
+                                <div className="flex justify-between items-center relative">
+                                    {/* Connecting Line (Background) */}
+                                    <div className="absolute top-[24px] sm:top-[28px] left-0 w-full h-[2px] bg-white/5 -z-10" />
+                                    
+                                    {/* Connecting Line (Progress) */}
+                                    <div
+                                        className="absolute top-[24px] sm:top-[28px] left-0 h-[2px] bg-primary -z-10 transition-all duration-1000 shadow-[0_0_15px_rgba(255,255,255,0.3)]"
+                                        style={{ width: `${(getStatusStep(status.status) / 3) * 100}%` }}
+                                    />
 
-                                {
-                                    [
-                                        { label: 'Pending', icon: Clock },
-                                        { label: 'Processing', icon: Package },
-                                        { label: 'Shipped', icon: Truck },
-                                        { label: 'Delivered', icon: CheckCircle }
-                                    ].map((step, index) => {
-                                        const isActive = index <= getStatusStep(status.status);
-                                        const isCurrent = index === getStatusStep(status.status);
-                                        const Icon = step.icon;
+                                    {
+                                        [
+                                            { label: 'Pending', icon: Clock },
+                                            { label: 'Processing', icon: Package },
+                                            { label: 'Shipped', icon: Truck },
+                                            { label: 'Delivered', icon: CheckCircle }
+                                        ].map((step, index) => {
+                                            const isActive = index <= getStatusStep(status.status);
+                                            const isCurrent = index === getStatusStep(status.status);
+                                            const Icon = step.icon;
 
-                                        return (
-                                            <div key={step.label} className="flex flex-col items-center gap-2 sm:gap-4 bg-[#09090b] px-1 sm:px-2 relative z-10">
-                                                <div className={`w-10 h-10 sm:w-12 sm:h-12 rounded-full flex items-center justify-center transition-all duration-500 ${isActive ? 'bg-primary text-white shadow-lg shadow-primary/30' : 'bg-white/10 opacity-30'} ${isCurrent ? 'animate-pulse ring-4 ring-primary/20 scale-110' : ''}`}>
-                                                    <Icon className="w-4 h-4 sm:w-5 sm:h-5" />
+                                            return (
+                                                <div key={step.label} className="flex flex-col items-center gap-4 relative z-10 group">
+                                                    <div className={`w-12 h-12 sm:w-14 sm:h-14 rounded-2xl flex items-center justify-center transition-all duration-700 border ${
+                                                        isCurrent ? 'bg-primary border-primary text-white shadow-[0_0_30px_rgba(255,100,0,0.4)] scale-110' : 
+                                                        isActive ? 'bg-white text-black border-white' : 
+                                                        'bg-[#0d0d0f] border-white/5 text-white/20'
+                                                    }`}>
+                                                        <Icon className={`w-5 h-5 sm:w-6 sm:h-6 ${isCurrent ? 'animate-bounce' : ''}`} />
+                                                    </div>
+                                                    <div className="flex flex-col items-center">
+                                                        <span className={`text-[8px] sm:text-[9px] font-black uppercase tracking-[0.2em] transition-colors duration-500 ${isActive ? 'text-white' : 'text-white/20'}`}>{step.label}</span>
+                                                        {isCurrent && <span className="w-1 h-1 bg-primary rounded-full mt-2 animate-ping" />}
+                                                    </div>
                                                 </div>
-                                                <span className={`text-[8px] sm:text-[10px] font-black uppercase tracking-widest text-center ${isActive ? 'opacity-100 text-primary' : 'opacity-30 text-white'}`}>{step.label}</span>
-                                            </div>
-                                        );
-                                    })
-                                }
+                                            );
+                                        })
+                                    }
+                                </div>
                             </div>
 
-                            {/* Items List (NEW) */}
-                            <div className="space-y-4 pt-8 border-t border-white/5">
-                                <h4 className="text-[10px] font-black uppercase tracking-widest opacity-40">ORDER ITEMS</h4>
-                                <div className="space-y-3">
+                            {/* Items List (PREMIUM) */}
+                            <div className="space-y-6 pt-10 border-t border-white/5">
+                                <div className="flex items-center justify-between">
+                                    <h4 className="text-[10px] font-black uppercase tracking-[0.4em] text-white/30">CONSIGNMENT MANIFEST</h4>
+                                    <span className="text-[9px] font-bold text-primary italic uppercase tracking-widest">{status.order_items?.length} TOTAL ENTITIES</span>
+                                </div>
+                                <div className="grid gap-3">
                                     {status.order_items?.map((item: any) => (
-                                        <div key={item.id} className="flex justify-between items-center group bg-white/5 p-4 rounded-3xl border border-white/5">
-                                            <div className="flex items-center gap-4">
-                                                <div className="w-10 h-10 rounded-xl bg-black text-white flex items-center justify-center font-black text-xs">
-                                                    {item.quantity}x
+                                        <div key={item.id} className="group relative overflow-hidden rounded-[2rem] bg-white/[0.03] hover:bg-white/[0.05] border border-white/5 p-5 transition-all duration-500 flex items-center justify-between">
+                                            <div className="flex items-center gap-6">
+                                                <div className="relative">
+                                                    <div className="w-14 h-14 rounded-2xl bg-black text-white flex items-center justify-center font-black text-lg italic border border-white/10 shadow-2xl group-hover:scale-105 transition-transform">
+                                                        {item.quantity}
+                                                        <span className="text-[10px] absolute -top-1 -right-1 bg-primary px-1.5 py-0.5 rounded-lg not-italic">x</span>
+                                                    </div>
                                                 </div>
-                                                <div>
-                                                    <p className="font-black text-sm">{item.products?.name || 'Product'}</p>
-                                                    <div className="flex flex-col gap-0.5">
+                                                <div className="space-y-1">
+                                                    <p className="font-black text-base text-white tracking-tight group-hover:text-primary transition-colors">{item.products?.name || 'Premium Item'}</p>
+                                                    <div className="flex flex-col gap-1">
                                                         {(() => {
                                                             const combo = item.variant_combo || item.combination || {};
                                                             const variants = Object.entries(combo);
                                                             if (variants.length === 0) {
-                                                                return <span className="text-[9px] font-bold opacity-30 uppercase tracking-widest">Standard Edition</span>;
+                                                                return <span className="text-[9px] font-black text-white/30 uppercase tracking-[0.2em]">Authentic Standard Edition</span>;
                                                             }
                                                             return (
-                                                                <div className="flex flex-wrap gap-1.5 mt-0.5">
+                                                                <div className="flex flex-wrap gap-2">
                                                                     {variants.map(([k, v]) => (
-                                                                        <span key={k} className="text-[9px] font-black uppercase text-primary">
+                                                                        <span key={k} className="text-[8px] font-black uppercase text-primary/80 bg-primary/5 px-2 py-0.5 rounded-md border border-primary/10 tracking-widest">
                                                                             {k}: {String(v)}
                                                                         </span>
                                                                     ))}
@@ -191,25 +219,33 @@ export const TrackOrder = ({ onClose, initialOrderId }: { onClose: () => void, i
                                                     </div>
                                                 </div>
                                             </div>
-                                            <p className="font-black tracking-tighter text-sm italic opacity-50">Rs. {(item.price * item.quantity).toLocaleString()}</p>
+                                            <div className="text-right">
+                                                <p className="text-lg font-black text-white italic tracking-tighter group-hover:scale-110 transition-transform origin-right">Rs. {(item.price * item.quantity).toLocaleString()}</p>
+                                                <p className="text-[8px] font-bold text-white/20 uppercase tracking-widest">Unit Price: {item.price.toLocaleString()}</p>
+                                            </div>
                                         </div>
                                     ))}
                                 </div>
                             </div>
 
                             {status.tracking_number && (
-                                <div className="p-6 bg-primary/5 border border-primary/20 rounded-3xl space-y-2">
-                                    <div className="flex items-center gap-3 text-primary">
-                                        <Truck className="w-5 h-5" />
-                                        <h4 className="font-black uppercase tracking-widest text-sm">Shipping Information</h4>
+                                <div className="p-8 bg-white/[0.02] border border-white/5 rounded-[2.5rem] space-y-6 relative overflow-hidden group">
+                                    <div className="absolute top-0 right-0 p-8 opacity-5">
+                                        <Truck className="w-24 h-24" />
                                     </div>
-                                    <div className="grid grid-cols-2 gap-4">
-                                        <div>
-                                            <p className="text-[10px] font-black opacity-40 uppercase tracking-widest">Courier Partner</p>
-                                            <p className="font-black">{status.courier_name || 'Standard'}</p>
+                                    <div className="flex items-center gap-3 text-primary relative z-10">
+                                        <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
+                                            <Package className="w-4 h-4" />
                                         </div>
-                                        <div>
-                                            <p className="text-[10px] font-black opacity-40 uppercase tracking-widest">Tracking Number</p>
+                                        <h4 className="font-black uppercase tracking-[0.3em] text-xs text-white">Logistics Manifest</h4>
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-10 relative z-10">
+                                        <div className="space-y-1">
+                                            <p className="text-[9px] font-black text-white/30 uppercase tracking-widest">Carrier Network</p>
+                                            <p className="font-black text-white text-lg italic tracking-tighter uppercase">{status.courier_name || 'Global Logistics'}</p>
+                                        </div>
+                                        <div className="space-y-1">
+                                            <p className="text-[9px] font-black text-white/30 uppercase tracking-widest">Tracking Reference</p>
                                             {(() => {
                                                 const getTrackingUrl = (courier: string, num: string) => {
                                                     const c = courier?.toLowerCase() || '';
@@ -226,47 +262,44 @@ export const TrackOrder = ({ onClose, initialOrderId }: { onClose: () => void, i
                                                         href={url}
                                                         target="_blank"
                                                         rel="noopener noreferrer"
-                                                        className="font-black text-primary select-all hover:underline flex items-center gap-1 group"
+                                                        className="font-black text-primary text-lg italic tracking-tighter select-all hover:text-white transition-colors flex items-center gap-2 group/link"
                                                     >
                                                         {status.tracking_number}
-                                                        <Eye className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity" />
+                                                        <ArrowUpRight className="w-4 h-4 opacity-50 group-hover/link:opacity-100 group-hover/link:translate-x-1 group-hover/link:-translate-y-1 transition-all" />
                                                     </a>
                                                 ) : (
-                                                    <p className="font-black text-primary select-all">{status.tracking_number}</p>
+                                                    <p className="font-black text-primary text-lg italic tracking-tighter select-all">{status.tracking_number}</p>
                                                 );
                                             })()}
                                         </div>
                                     </div>
                                     {/* Shipping Proof Section */}
-                                    <div className="mt-4 pt-4 border-t border-white/5">
-                                        <p className="text-[10px] font-black opacity-40 uppercase tracking-widest mb-3">Shipment Proof</p>
+                                    <div className="mt-6 pt-6 border-t border-white/5 relative z-10">
+                                        <div className="flex items-center justify-between mb-4">
+                                            <p className="text-[9px] font-black text-white/30 uppercase tracking-[0.2em]">Visual Shipment Evidence</p>
+                                            {status.shipping_proof_url && (
+                                                <span className="text-[8px] font-black text-primary bg-primary/10 px-2 py-0.5 rounded-full uppercase tracking-tighter">Verified Dispatch</span>
+                                            )}
+                                        </div>
                                         {status.shipping_proof_url ? (
-                                            <>
-                                                <button
-                                                    onClick={() => {
-                                                        const win = window.open(status.shipping_proof_url, '_blank');
-                                                        if (win) win.focus();
-                                                    }}
-                                                    className="flex items-center gap-2 text-xs font-black uppercase tracking-tighter text-primary hover:opacity-80 transition-opacity mb-3"
-                                                >
-                                                    <Eye className="w-4 h-4" />
-                                                    View Full Shipment Proof
-                                                </button>
-                                                <div
-                                                    className="w-full h-48 rounded-2xl overflow-hidden border border-white/10 group relative cursor-pointer"
-                                                    onClick={() => window.open(status.shipping_proof_url, '_blank')}
-                                                >
-                                                    <img src={status.shipping_proof_url} alt="Shipping Proof" className="w-full h-full object-cover transition-transform group-hover:scale-110" />
-                                                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
-                                                        <span className="text-[10px] font-black uppercase text-white tracking-widest">Click to Expand</span>
+                                            <div
+                                                className="w-full h-56 rounded-[2rem] overflow-hidden border border-white/10 group/proof relative cursor-pointer shadow-2xl"
+                                                onClick={() => window.open(status.shipping_proof_url, '_blank')}
+                                            >
+                                                <img src={status.shipping_proof_url} alt="Shipping Proof" className="w-full h-full object-cover transition-transform duration-700 group-hover/proof:scale-110" />
+                                                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover/proof:opacity-100 flex flex-col items-center justify-center transition-opacity duration-500">
+                                                    <div className="w-12 h-12 rounded-full bg-white/10 backdrop-blur-md flex items-center justify-center mb-3 scale-75 group-hover/proof:scale-100 transition-transform duration-500">
+                                                        <Eye className="w-6 h-6 text-white" />
                                                     </div>
+                                                    <span className="text-[10px] font-black uppercase text-white tracking-[0.3em]">Expand Documentation</span>
                                                 </div>
-                                            </>
+                                            </div>
                                         ) : (
-                                            /* Placeholder — no proof uploaded yet */
-                                            <div className="w-full h-32 rounded-2xl border-2 border-dashed border-white/10 flex flex-col items-center justify-center gap-2 opacity-40">
-                                                <Camera className="w-6 h-6" />
-                                                <span className="text-[10px] font-black uppercase tracking-widest">Awaiting shipment proof from merchant</span>
+                                            <div className="w-full h-40 rounded-[2rem] border-2 border-dashed border-white/5 flex flex-col items-center justify-center gap-3 transition-opacity bg-white/[0.01]">
+                                                <div className="w-10 h-10 rounded-full bg-white/[0.03] flex items-center justify-center">
+                                                    <Camera className="w-5 h-5 text-white/10" />
+                                                </div>
+                                                <span className="text-[9px] font-black uppercase tracking-[0.2em] text-white/20 text-center px-10">Waiting for merchant to upload visual dispatch certification</span>
                                             </div>
                                         )}
                                     </div>

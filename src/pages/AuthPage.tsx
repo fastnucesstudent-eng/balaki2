@@ -259,6 +259,20 @@ export const AuthPage = ({ type = 'login', onClose }: { type?: 'login' | 'signup
                         </button>
                     </form>
                 )}
+
+                {/* Merchant CTA */}
+                <div className="mt-8 pt-6 border-t border-white/10 text-center">
+                    <p className="text-xs text-white/40 font-medium">
+                        Want to sell on Tarzify?{' '}
+                        <button
+                            type="button"
+                            onClick={() => { onClose?.(); window.location.hash = '#merchant-register'; }}
+                            className="text-primary font-black hover:underline"
+                        >
+                            Apply as a Merchant →
+                        </button>
+                    </p>
+                </div>
             </motion.div>
         </div>
     );

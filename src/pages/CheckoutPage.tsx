@@ -229,11 +229,9 @@ export const CheckoutPage = ({ onBack }: { onBack: () => void }) => {
                         const fullProduct = products.find(p => Number(p.id) === Number(item.id));
                         return {
                             id: item.id,
-                            name: item.name,
                             quantity: item.quantity,
-                            price: item.price,
-                            image: item.image,
-                            variant_combo: item.variant_combo,
+                            price: parseFloat(String(item.price)) || 0,
+                            variant_combo: item.variant_combo || null,
                             merchant_id: item.merchant_id || fullProduct?.merchant_id
                         };
                     }),
@@ -650,18 +648,18 @@ export const CheckoutPage = ({ onBack }: { onBack: () => void }) => {
                         {/* Voucher Section */}
                         <div className="pt-6 border-t border-foreground/10 space-y-3">
                             <label className="text-[10px] font-black uppercase tracking-widest opacity-30">Promo Code</label>
-                            <div className="flex gap-2">
+                            <div className="flex flex-col gap-2">
                                 <input
                                     type="text"
                                     placeholder="Enter code"
                                     value={voucherCode}
                                     onChange={(e) => setVoucherCode(e.target.value.toUpperCase())}
-                                    className="flex-grow bg-foreground/5 border-none rounded-xl px-4 py-2 text-sm font-bold focus:ring-1 ring-primary/30 outline-none"
+                                    className="w-full bg-foreground/5 border-none rounded-xl px-4 py-2 text-sm font-bold focus:ring-1 ring-primary/30 outline-none"
                                 />
                                 <button
                                     onClick={handleApplyVoucher}
                                     disabled={voucherLoading || !voucherCode.trim()}
-                                    className="px-4 py-2 bg-primary text-white rounded-xl font-bold text-xs hover:scale-105 transition-all disabled:opacity-50"
+                                    className="self-start px-5 py-1.5 bg-primary text-white rounded-lg font-bold text-xs hover:scale-105 transition-all disabled:opacity-50"
                                 >
                                     {voucherLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Apply'}
                                 </button>

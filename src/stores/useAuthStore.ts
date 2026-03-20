@@ -8,6 +8,9 @@ let authSubscription: { unsubscribe: () => void } | null = null;
 interface AuthState {
     user: User | null;
     role: 'admin' | 'merchant' | 'customer' | null;
+    merchantStatus: 'pending' | 'approved' | 'rejected' | 'paused' | null;
+    storeSlug: string | null;
+    qrCodeUrl: string | null;
     loading: boolean;
     setUser: (user: User | null) => void;
     signOut: () => Promise<void>;
@@ -17,11 +20,14 @@ interface AuthState {
 export const useAuthStore = create<AuthState>((set) => ({
     user: null,
     role: null,
+    merchantStatus: null,
+    storeSlug: null,
+    qrCodeUrl: null,
     loading: true,
     setUser: (user) => set({ user, loading: false }),
     signOut: async () => {
         await supabase.auth.signOut();
-        set({ user: null, role: null });
+        set({ user: null, role: null, merchantStatus: null, storeSlug: null, qrCodeUrl: null });
     },
     initialize: async () => {
         try {
@@ -35,37 +41,53 @@ export const useAuthStore = create<AuthState>((set) => ({
                     console.log('👤 Auth session fetch aborted (normal during navigation/refresh)');
                     return;
                 }
+                // Stale/invalid refresh token — clear it so the app doesn't loop on reload
+                if (
+                    sessionError.message?.toLowerCase().includes('refresh token') ||
+                    sessionError.message?.toLowerCase().includes('invalid token') ||
+                    (sessionError as any)?.status === 400
+                ) {
+                    console.warn('⚠️ Stale refresh token detected, clearing session...');
+                    await supabase.auth.signOut();
+                    set({ user: null, role: null, loading: false });
+                    return;
+                }
                 console.error('❌ Session fetch error:', sessionError);
                 throw sessionError;
             }
 
-            const fetchRole = async (userId: string) => {
+            const fetchProfileData = async (userId: string) => {
                 try {
                     const { data, error } = await supabase
                         .from('profiles')
-                        .select('role')
+                        .select('role, merchant_status, store_slug, qr_code_url')
                         .eq('id', userId)
                         .single();
 
                     if (error) {
                         console.warn('⚠️ Profile fetch error (might be first login):', error.message);
-                        return 'customer';
+                        return { role: 'customer' as const, status: null, slug: null, qr: null };
                     }
-                    return data?.role || 'customer';
+                    return { 
+                        role: (data?.role || 'customer') as 'admin' | 'merchant' | 'customer', 
+                        status: data?.merchant_status || null,
+                        slug: data?.store_slug || null,
+                        qr: data?.qr_code_url || null
+                    };
                 } catch (e) {
-                    console.error('❌ Unexpected error fetching role:', e);
-                    return 'customer';
+                    console.error('❌ Unexpected error fetching profile:', e);
+                    return { role: 'customer' as const, status: null, slug: null, qr: null };
                 }
             };
 
             if (session?.user) {
                 console.log('👤 User session found:', session.user.email);
-                const role = await fetchRole(session.user.id);
-                console.log('🎭 User role:', role);
-                set({ user: session.user, role, loading: false });
+                const { role, status, slug, qr } = await fetchProfileData(session.user.id);
+                console.log('🎭 User role:', role, 'Status:', status);
+                set({ user: session.user, role, merchantStatus: status, storeSlug: slug, qrCodeUrl: qr, loading: false });
             } else {
                 console.log('📭 No active session');
-                set({ user: null, role: null, loading: false });
+                set({ user: null, role: null, merchantStatus: null, storeSlug: null, qrCodeUrl: null, loading: false });
             }
 
             // Unsubscribe from any previous listener before registering a new one
@@ -83,10 +105,10 @@ export const useAuthStore = create<AuthState>((set) => ({
                 }
 
                 if (session?.user) {
-                    const role = await fetchRole(session.user.id);
-                    set({ user: session.user, role, loading: false });
+                    const { role, status, slug, qr } = await fetchProfileData(session.user.id);
+                    set({ user: session.user, role, merchantStatus: status, storeSlug: slug, qrCodeUrl: qr, loading: false });
                 } else {
-                    set({ user: null, role: null, loading: false });
+                    set({ user: null, role: null, merchantStatus: null, storeSlug: null, qrCodeUrl: null, loading: false });
                 }
             });
 

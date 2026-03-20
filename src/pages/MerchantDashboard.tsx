@@ -4,7 +4,8 @@ import {
     Package, Truck, BarChart3, Plus, X, Edit2,
     ShoppingBag, Menu,
     Loader2,
-    Clock, CheckCircle2, QrCode, Image as ImageIcon, Upload, Trash2, ExternalLink, Settings
+    Clock, CheckCircle2, QrCode, Image as ImageIcon, Upload, Trash2, ExternalLink, Settings, Store,
+    Percent, Tag
 } from 'lucide-react';
 import { useProducts } from '../hooks/useProducts';
 import { supabase } from '../lib/supabase';
@@ -14,7 +15,6 @@ import { ReceiptModal } from '../components/ReceiptModal';
 import { fetchWithTimeout } from '../lib/fetchWithTimeout';
 import { ProductForm as UnifiedProductForm } from '../components/ProductForm';
 import { useCategories } from '../hooks/useCategories';
-import { Percent, Tag } from 'lucide-react';
 
 declare global {
     interface Window {
@@ -46,12 +46,21 @@ const QRScannerPopup = ({ onScan, onClose }: { onScan: (data: string) => void, o
 // Unified Product Form is robustly typed in its own file.
 export const MerchantDashboard = () => {
     const [activeTab, setActiveTab] = useState('inventory');
+    const [storeProfile, setStoreProfile] = useState({
+        store_name: '',
+        business_address: '',
+        contact_number: '',
+        logo_url: '',
+        banner_url: ''
+    });
     const { products, loading: productsLoading, refetch: refetchProducts } = useProducts();
     const [orders, setOrders] = useState<any[]>([]);
     const [showMobileMenu, setShowMobileMenu] = useState(false);
     const [showQR, setShowQR] = useState(false);
-    const { user, role } = useAuthStore();
+    const { user, role, merchantStatus, storeSlug, qrCodeUrl } = useAuthStore();
     const [uploading, setUploading] = useState(false);
+    const [cancellingOrderId, setCancellingOrderId] = useState<number | null>(null);
+    const [confirmingCancelId, setConfirmingCancelId] = useState<number | null>(null);
     const toast = useToastStore();
     const [trackingData, setTrackingData] = useState({
         orderId: null as number | null,
@@ -412,8 +421,42 @@ export const MerchantDashboard = () => {
         }
     };
 
+    const fetchStoreProfile = async () => {
+        if (!user) return;
+        try {
+            const { data, error } = await supabase
+                .from('profiles')
+                .select('store_name, business_address, contact_number, logo_url, banner_url')
+                .eq('id', user.id)
+                .single();
+            if (error) throw error;
+            if (data) setStoreProfile(data);
+        } catch (err: any) {
+            console.error('Error fetching store profile:', err);
+        }
+    };
+
+    const handleUpdateStoreProfile = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!user) return;
+        setUploading(true);
+        try {
+            const { error } = await supabase
+                .from('profiles')
+                .update(storeProfile)
+                .eq('id', user.id);
+            if (error) throw error;
+            toast.show('Store profile updated successfully!', 'success');
+        } catch (err: any) {
+            toast.show('Update failed: ' + err.message, 'error');
+        } finally {
+            setUploading(false);
+        }
+    };
+
     useEffect(() => {
         if (activeTab === 'carts') fetchCarts();
+        if (activeTab === 'profile') fetchStoreProfile();
     }, [activeTab]);
 
     const fetchOrders = async () => {
@@ -422,7 +465,7 @@ export const MerchantDashboard = () => {
             .from('orders')
             .select(`
                 *,
-                user:user_id(full_name),
+                profiles!user_id(*),
                 order_items(*, products(*))
             `)
             .order('created_at', { ascending: false });
@@ -434,7 +477,7 @@ export const MerchantDashboard = () => {
         // Map the user data to profiles for backward compatibility
         const ordersWithProfiles = data?.map(order => ({
             ...order,
-            profiles: order.user
+            profiles: order.profiles
         })) || [];
         setOrders(ordersWithProfiles);
     };
@@ -460,6 +503,31 @@ export const MerchantDashboard = () => {
         } catch (error: any) {
             console.error('Error updating status:', error);
             toast.show('Error updating status: ' + error.message, 'error');
+        }
+    };
+
+    const handleCancelOrder = async (orderId: number) => {
+        setCancellingOrderId(orderId);
+        try {
+            const res = await fetch(`${import.meta.env.VITE_API_URL}/orders/cancel-merchant/${orderId}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ userId: user?.id })
+            });
+
+            const data = await res.json();
+            if (data.success) {
+                toast.show('Order cancelled successfully', 'success');
+                fetchOrders();
+                setConfirmingCancelId(null);
+            } else {
+                toast.show(data.error || 'Failed to cancel order', 'error');
+            }
+        } catch (error: any) {
+            console.error('Cancellation error:', error);
+            toast.show('An error occurred while cancelling the order', 'error');
+        } finally {
+            setCancellingOrderId(null);
         }
     };
 
@@ -658,7 +726,19 @@ export const MerchantDashboard = () => {
     };
 
     return (
-        <div className="min-h-screen bg-background text-foreground flex pt-20">
+        <div className="min-h-screen bg-background text-foreground flex flex-col pt-20">
+            {merchantStatus && merchantStatus !== 'approved' && (
+                <div className={`w-full p-4 text-center font-black uppercase italic tracking-tighter text-xs ${
+                    merchantStatus === 'pending' ? 'bg-amber-500 text-black' :
+                    merchantStatus === 'rejected' ? 'bg-red-500 text-white' :
+                    'bg-zinc-800 text-white'
+                }`}>
+                    {merchantStatus === 'pending' && "🕒 Your account is pending approval. You can manage products but they won't be visible to customers yet."}
+                    {merchantStatus === 'rejected' && "❌ Your merchant application was rejected. Please contact support."}
+                    {merchantStatus === 'paused' && "⏸️ Your store is temporarily paused. Your products are hidden from the marketplace."}
+                </div>
+            )}
+            <div className="flex flex-1">
             {showQR && <QRScannerPopup onScan={(sku) => { useToastStore.getState().show('Scanned SKU: ' + sku, 'success'); setShowQR(false); }} onClose={() => setShowQR(false)} />}
 
             <AnimatePresence>
@@ -832,7 +912,7 @@ export const MerchantDashboard = () => {
                 <div className="flex items-center justify-between mb-10 px-4">
                     <div className="flex items-center gap-3">
                         <ShoppingBag className="w-5 h-5 text-primary" />
-                        <h2 className="text-xl font-black tracking-tighter italic">
+                        <h2 className="text-xl font-black italic uppercase tracking-tighter">
                             {role === 'admin' ? 'ADMIN' : 'MERCHANT'}
                         </h2>
                     </div>
@@ -857,6 +937,10 @@ export const MerchantDashboard = () => {
                         <span className="font-black text-sm uppercase tracking-widest">{tab.label}</span>
                     </button>
                 ))}
+                <button onClick={() => { setActiveTab('profile'); setShowMobileMenu(false); }} className={`flex items-center gap-4 w-full p-4 rounded-3xl transition-all ${activeTab === 'profile' ? 'bg-primary text-white shadow-xl shadow-primary/20' : 'hover:bg-foreground/5 opacity-50'}`}>
+                    <Settings className="w-5 h-5" />
+                    <span className="font-black text-sm uppercase tracking-tighter">Store Profile</span>
+                </button>
             </div>
 
             {/* Main Content */}
@@ -997,6 +1081,36 @@ export const MerchantDashboard = () => {
                                         <div className="flex gap-2 w-full sm:w-auto">
                                             <button onClick={() => handlePrintReceipt(order)} className="flex-1 sm:flex-none p-3 sm:p-4 bg-primary text-white rounded-xl sm:rounded-2xl font-black text-[10px] sm:text-xs uppercase italic tracking-widest hover:scale-105 active:scale-95 transition-transform">Print</button>
                                             <button onClick={() => setTrackingData({ ...trackingData, orderId: order.id })} className="flex-1 sm:flex-none p-3 sm:p-4 bg-foreground/5 text-foreground rounded-xl sm:rounded-2xl font-black text-[10px] sm:text-xs uppercase italic tracking-widest border border-foreground/10 hover:bg-foreground/10 transition-colors text-center">Tracking</button>
+                                            {order.status === 'pending' && (
+                                                <div className="relative min-w-[100px] sm:min-w-[120px]">
+                                                    {confirmingCancelId === order.id ? (
+                                                        <div className="flex gap-1 h-full bg-background p-1 rounded-xl sm:rounded-2xl border border-red-500/20 shadow-xl">
+                                                            <button 
+                                                                onClick={() => handleCancelOrder(order.id)}
+                                                                disabled={cancellingOrderId === order.id}
+                                                                className="flex-1 bg-red-500 text-white rounded-lg text-[9px] font-black uppercase italic tracking-wider flex items-center justify-center gap-1 hover:bg-red-600 transition-colors px-2"
+                                                            >
+                                                                {cancellingOrderId === order.id ? <Loader2 className="w-3 h-3 animate-spin" /> : 'Confirm'}
+                                                            </button>
+                                                            <button 
+                                                                onClick={() => setConfirmingCancelId(null)}
+                                                                disabled={cancellingOrderId === order.id}
+                                                                className="flex-1 bg-foreground/5 text-foreground rounded-lg text-[9px] font-black uppercase italic tracking-wider hover:bg-foreground/10 transition-colors px-2"
+                                                            >
+                                                                No
+                                                            </button>
+                                                        </div>
+                                                    ) : (
+                                                        <button 
+                                                            onClick={() => setConfirmingCancelId(order.id)} 
+                                                            className="w-full p-3 sm:p-4 bg-red-500/10 text-red-500 rounded-xl sm:rounded-2xl font-black text-[10px] sm:text-xs uppercase italic tracking-widest hover:bg-red-500 hover:text-white transition-all flex items-center justify-center gap-2"
+                                                        >
+                                                            <X className="w-3 h-3" />
+                                                            Cancel
+                                                        </button>
+                                                    )}
+                                                </div>
+                                            )}
                                         </div>
                                         <div className="flex gap-1 sm:gap-2 bg-foreground/5 p-1 sm:p-2 rounded-[1.5rem] sm:rounded-[2rem] w-full sm:w-auto overflow-x-auto no-scrollbar">
                                             {[
@@ -1282,7 +1396,7 @@ export const MerchantDashboard = () => {
                                         <button
                                             type="button"
                                             onClick={() => openUploadWidget((url) => setNewBanner(p => ({ ...p, image_url: url })))}
-                                            className="w-full aspect-[21/7] rounded-[2rem] border-2 border-dashed border-foreground/10 flex flex-col items-center justify-center gap-3 hover:border-primary/50 transition-all bg-foreground/[0.02] overflow-hidden group"
+                                            className="w-full aspect-[21/7] rounded-[2rem] border-2 border-dashed border-foreground/10 flex flex-col items-center justify-center cursor-pointer hover:border-primary/50 transition-all bg-foreground/[0.02] overflow-hidden group"
                                         >
                                             {newBanner.image_url ? (
                                                 <img src={newBanner.image_url} alt="Preview" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
@@ -1397,12 +1511,194 @@ export const MerchantDashboard = () => {
                                 </div>
                             </div>
                         </div>
+
+                        {merchantStatus === 'approved' && (
+                            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                                <div className="lg:col-span-1 bg-card p-10 rounded-[3rem] border border-border shadow-lg flex flex-col items-center justify-center text-center space-y-6">
+                                    <div className="relative group">
+                                        <div className="w-48 h-48 bg-white p-4 rounded-3xl shadow-inner border border-foreground/5 relative overflow-hidden">
+                                            {qrCodeUrl ? (
+                                                <img src={qrCodeUrl} alt="Store QR Code" className="w-full h-full object-contain" />
+                                            ) : (
+                                                <div className="w-full h-full flex flex-col items-center justify-center opacity-20">
+                                                    <QrCode className="w-12 h-12 mb-2" />
+                                                    <p className="text-[10px] font-black uppercase">Generating...</p>
+                                                </div>
+                                            )}
+                                        </div>
+                                        {qrCodeUrl && (
+                                            <a 
+                                                href={qrCodeUrl} 
+                                                download 
+                                                className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white rounded-3xl font-black uppercase italic text-xs"
+                                            >
+                                                Download QR
+                                            </a>
+                                        )}
+                                    </div>
+                                    <div>
+                                        <h4 className="text-xl font-black italic uppercase tracking-tighter">Store QR Code</h4>
+                                        <p className="text-xs opacity-50 mt-1 font-medium italic">Customers can scan this to visit your store directly.</p>
+                                    </div>
+                                </div>
+
+                                <div className="lg:col-span-2 bg-primary/5 p-10 rounded-[3rem] border border-primary/10 shadow-lg flex flex-col justify-center space-y-8 relative overflow-hidden">
+                                    <div className="absolute -right-20 -top-20 w-64 h-64 bg-primary/10 rounded-full blur-[100px]" />
+                                    
+                                    <div className="space-y-4 relative">
+                                        <div className="flex items-center gap-3">
+                                            <div className="p-3 bg-primary text-white rounded-2xl">
+                                                <ExternalLink className="w-6 h-6" />
+                                            </div>
+                                            <h3 className="text-2xl font-black italic uppercase tracking-tighter">Global Presence</h3>
+                                        </div>
+                                        <p className="text-sm opacity-60 font-medium max-w-md">Your store is live and accessible via a unique URL. Share this link on social media to drive traffic directly to your products.</p>
+                                    </div>
+
+                                    <div className="flex flex-col sm:flex-row items-center gap-4 relative">
+                                        <div className="flex-grow w-full glass bg-background/50 border-white/10 rounded-2xl p-4 px-6 font-mono text-sm opacity-60 truncate">
+                                            {window.location.origin}/#store/{storeSlug}
+                                        </div>
+                                        <button 
+                                            onClick={() => {
+                                                navigator.clipboard.writeText(`${window.location.origin}/#store/${storeSlug}`);
+                                                toast.show('Store link copied!', 'success');
+                                            }}
+                                            className="w-full sm:w-auto bg-primary text-white font-black px-8 py-4 rounded-2xl uppercase italic tracking-tighter shadow-xl shadow-primary/20 hover:scale-105 active:scale-95 transition-all text-sm whitespace-nowrap"
+                                        >
+                                            Copy Link
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
                     </div>
+                )}
+                {/* STORE PROFILE TAB */}
+                {activeTab === 'profile' && (
+                    <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="space-y-12">
+                        <div>
+                            <h1 className="text-5xl font-black tracking-tighter italic uppercase">Store Profile</h1>
+                            <p className="opacity-50 mt-2 font-medium">Customize your store's appearance and contact details.</p>
+                        </div>
+
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
+                            <form onSubmit={handleUpdateStoreProfile} className="glass p-10 rounded-[3rem] border-white/5 space-y-8">
+                                <div className="space-y-6">
+                                    <div className="space-y-2">
+                                        <label className="text-[10px] font-black uppercase opacity-30">Store Banner (Poster)</label>
+                                        <div 
+                                            onClick={() => openUploadWidget((url) => setStoreProfile(prev => ({ ...prev, banner_url: url })))}
+                                            className="relative h-64 bg-foreground/5 rounded-3xl border-2 border-dashed border-foreground/10 flex items-center justify-center cursor-pointer hover:bg-foreground/10 transition-all overflow-hidden"
+                                        >
+                                            {storeProfile.banner_url ? (
+                                                <img src={storeProfile.banner_url} alt="Banner" className="w-full h-full object-cover" />
+                                            ) : (
+                                                <div className="text-center space-y-2">
+                                                    <Upload className="w-8 h-8 mx-auto opacity-30" />
+                                                    <p className="text-[10px] font-black uppercase opacity-30">Click to upload poster</p>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+
+                                    <div className="grid grid-cols-2 gap-6">
+                                        <div className="space-y-2">
+                                            <label className="text-[10px] font-black uppercase opacity-30">Store Logo</label>
+                                            <div 
+                                                onClick={() => openUploadWidget((url) => setStoreProfile(prev => ({ ...prev, logo_url: url })))}
+                                                className="relative aspect-square bg-foreground/5 rounded-3xl border-2 border-dashed border-foreground/10 flex items-center justify-center cursor-pointer hover:bg-foreground/10 transition-all overflow-hidden"
+                                            >
+                                                {storeProfile.logo_url ? (
+                                                    <img src={storeProfile.logo_url} alt="Logo" className="w-full h-full object-cover" />
+                                                ) : (
+                                                    <Upload className="w-6 h-6 opacity-30" />
+                                                )}
+                                            </div>
+                                        </div>
+                                        <div className="space-y-6">
+                                            <div className="space-y-2">
+                                                <label className="text-[10px] font-black uppercase opacity-30">Store Name</label>
+                                                <input 
+                                                    type="text" 
+                                                    value={storeProfile.store_name} 
+                                                    onChange={e => setStoreProfile(prev => ({ ...prev, store_name: e.target.value }))}
+                                                    className="w-full glass border-none rounded-2xl p-4 font-black text-sm"
+                                                />
+                                            </div>
+                                            <div className="space-y-2">
+                                                <label className="text-[10px] font-black uppercase opacity-30">Contact Number</label>
+                                                <input 
+                                                    type="text" 
+                                                    value={storeProfile.contact_number} 
+                                                    onChange={e => setStoreProfile(prev => ({ ...prev, contact_number: e.target.value }))}
+                                                    className="w-full glass border-none rounded-2xl p-4 font-black text-sm"
+                                                />
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div className="space-y-2">
+                                        <label className="text-[10px] font-black uppercase opacity-30">Business Address</label>
+                                        <textarea 
+                                            value={storeProfile.business_address} 
+                                            onChange={e => setStoreProfile(prev => ({ ...prev, business_address: e.target.value }))}
+                                            className="w-full glass border-none rounded-2xl p-4 font-black text-sm h-32 resize-none"
+                                        />
+                                    </div>
+
+                                    <button 
+                                        type="submit" 
+                                        disabled={uploading}
+                                        className="w-full py-5 bg-primary text-white rounded-[2rem] font-black uppercase italic tracking-tighter shadow-xl shadow-primary/20 hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50"
+                                    >
+                                        {uploading ? 'Updating...' : 'Save Changes'}
+                                    </button>
+                                </div>
+                            </form>
+
+                            <div className="space-y-8">
+                                <h3 className="text-xl font-black italic uppercase italic">Live Preview</h3>
+                                {/* Mock preview of the store header */}
+                                <div className="space-y-0">
+                                    <div className="relative h-48 bg-foreground/5 rounded-t-[3rem] overflow-hidden border border-foreground/5 shadow-xl">
+                                        {storeProfile.banner_url ? (
+                                            <img src={storeProfile.banner_url} alt="Banner Preview" className="w-full h-full object-cover" />
+                                        ) : (
+                                            <div className="absolute inset-0 bg-primary/10 flex items-center justify-center">
+                                                <ImageIcon className="w-10 h-10 opacity-10" />
+                                            </div>
+                                        )}
+                                        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
+                                    </div>
+                                    <div className="bg-card p-6 rounded-b-[3rem] border border-t-0 border-foreground/5 relative">
+                                        <div className="flex items-end gap-4 -mt-16 relative z-10 ms-4">
+                                            <div className="w-20 h-20 rounded-[2rem] bg-background border-4 border-background shadow-2xl overflow-hidden flex items-center justify-center flex-shrink-0">
+                                                {storeProfile.logo_url ? (
+                                                    <img src={storeProfile.logo_url} alt="Logo Preview" className="w-full h-full object-cover" />
+                                                ) : (
+                                                    <div className="w-full h-full bg-primary flex items-center justify-center text-white">
+                                                        <Store className="w-8 h-8 opacity-40" />
+                                                    </div>
+                                                )}
+                                            </div>
+                                            <div className="pb-2">
+                                                <h4 className="text-xl font-black italic uppercase tracking-tighter leading-none">{storeProfile.store_name || 'Your Store Name'}</h4>
+                                                <p className="text-[10px] font-bold uppercase tracking-widest opacity-40">@{storeSlug || 'your-handle'}</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <p className="text-[10px] opacity-50 font-medium px-4">This is a preview of your store header. A high-quality banner (1920x600) and clear logo (500x500) will give your store a premium feel.</p>
+                            </div>
+                        </div>
+                    </motion.div>
                 )}
             </div>
             {selectedOrderForReceipt && (
                 <ReceiptModal order={selectedOrderForReceipt} onClose={() => setSelectedOrderForReceipt(null)} />
             )}
+            </div>
         </div>
     );
 };

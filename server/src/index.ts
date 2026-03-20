@@ -13,6 +13,7 @@ import productsRouter from './routes/products';
 import bannersRouter from './routes/banners';
 import feedRouter from './routes/feed';
 import vouchersRouter from './routes/vouchers';
+import merchantsRouter from './routes/merchants';
 import { supabase } from './lib/supabase';
 
 const app = express();
@@ -79,6 +80,7 @@ app.use('/api/shipping', shippingRouter);
 app.use('/api/products', productsRouter);
 app.use('/api/banners', bannersRouter);
 app.use('/api/vouchers', vouchersRouter);
+app.use('/api/merchants', merchantsRouter);
 app.use('/api/feed', feedRouter);
 
 // Secure Password Update Endpoint (Bypasses Client Auth Quirks)
@@ -138,6 +140,11 @@ app.post('/api/setup/seed', async (req, res) => {
     }
 });
 
+app.post('/api/test-post', (req, res) => res.json({ success: true }));
+app.post('/api/orders/test-direct', (req, res) => res.json({ success: true }));
+
+
+// Health check
 app.get('/api/health', (req, res) => {
     res.json({ status: 'ok', message: 'The All-in-One Store Backend is running (TypeScript)' });
 });

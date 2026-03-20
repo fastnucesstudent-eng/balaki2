@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { useAuthStore } from '../stores/useAuthStore';
 import { supabase } from '../lib/supabase';
-import { Package, Clock, MapPin, ChevronRight, LogOut, Settings, ArrowLeft, Star, CheckCircle2, X } from 'lucide-react';
+import { Package, Clock, MapPin, ChevronRight, LogOut, Settings, ArrowLeft, Star, CheckCircle2, X, Store, Loader2 } from 'lucide-react';
 import { AccountSettingsModal } from '../components/AccountSettingsModal';
 import { ReceiptModal } from '../components/ReceiptModal';
 import { PrivacySecurityModal } from '../components/PrivacySecurityModal';
@@ -12,11 +12,14 @@ export const ProfilePage = () => {
     const [orders, setOrders] = useState<any[]>([]);
     const [reviews, setReviews] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
-    const [activeTab, setActiveTab] = useState<'orders' | 'to-review' | 'my-reviews'>('orders');
+    const [activeTab, setActiveTab] = useState<'orders' | 'to-review' | 'my-reviews' | 'following'>('orders');
     const [showSettings, setShowSettings] = useState(false);
     const [selectedOrder, setSelectedOrder] = useState<any>(null);
     const [showPrivacy, setShowPrivacy] = useState(false);
     const [selectedReviewImage, setSelectedReviewImage] = useState<string | null>(null);
+    const [following, setFollowing] = useState<any[]>([]);
+    const [cancellingOrderId, setCancellingOrderId] = useState<string | null>(null);
+    const [confirmingCancelId, setConfirmingCancelId] = useState<string | null>(null);
 
     useEffect(() => {
         if (user) {
@@ -25,7 +28,7 @@ export const ProfilePage = () => {
                 // Fetch Orders
                 const { data: ordersData } = await supabase
                     .from('orders')
-                    .select('*, order_items(*, products(*))')
+                    .select('*, profiles:profiles!user_id(*), order_items(*, products(*))')
                     .eq('user_id', user.id)
                     .order('created_at', { ascending: false });
 
@@ -36,6 +39,27 @@ export const ProfilePage = () => {
                     .eq('user_id', user.id)
                     .order('created_at', { ascending: false });
 
+                // Fetch Following (Two-step fetch to avoid schema join issues)
+                const { data: follows, error: followsError } = await supabase
+                    .from('store_follows')
+                    .select('merchant_id')
+                    .eq('user_id', user.id);
+
+                if (followsError) {
+                    console.error('Error fetching follows:', followsError);
+                } else if (follows && follows.length > 0) {
+                    const merchantIds = follows.map(f => f.merchant_id);
+                    const { data: merchants } = await supabase
+                        .from('profiles')
+                        .select('*')
+                        .in('id', merchantIds);
+                    
+                    if (merchants) setFollowing(merchants);
+                }
+
+                if (ordersData) setOrders(ordersData);
+                if (reviewsData) setReviews(reviewsData);
+
                 if (ordersData) setOrders(ordersData);
                 if (reviewsData) setReviews(reviewsData);
                 setLoading(false);
@@ -43,6 +67,33 @@ export const ProfilePage = () => {
             fetchData();
         }
     }, [user]);
+
+    const handleCancelOrder = async (orderId: string) => {
+        setCancellingOrderId(orderId);
+        try {
+            const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000/api'}/orders/cancel-customer/${orderId}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ userId: user?.id })
+            });
+            
+            const result = await response.json();
+            if (result.success) {
+                // Update local state
+                setOrders(prev => prev.map(o => o.id.toString() === orderId.toString() ? { ...o, status: 'cancelled' } : o));
+                setConfirmingCancelId(null);
+                
+                // Show success notification - we don't have a direct toast call here but we can use a window alert or similar
+                // Actually, let's just make sure the UI update is clear.
+            } else {
+                console.error('Cancellation failed:', result.error);
+            }
+        } catch (error) {
+            console.error('Cancellation error:', error);
+        } finally {
+            setCancellingOrderId(null);
+        }
+    };
 
     const deliveredItemsToReview = orders
         .filter(o => o.status === 'delivered')
@@ -87,6 +138,10 @@ export const ProfilePage = () => {
                             <button onClick={() => setActiveTab('my-reviews')} className={`flex items-center gap-4 w-full p-4 rounded-2xl transition-all group ${activeTab === 'my-reviews' ? 'bg-primary text-white shadow-lg shadow-primary/20' : 'bg-foreground/5 hover:bg-primary/10 hover:text-primary'}`}>
                                 <ArrowLeft className="w-5 h-5 opacity-50 group-hover:opacity-100 rotate-180" />
                                 <span className="font-black text-sm uppercase tracking-widest">My Reviews</span>
+                            </button>
+                            <button onClick={() => setActiveTab('following')} className={`flex items-center gap-4 w-full p-4 rounded-2xl transition-all group ${activeTab === 'following' ? 'bg-primary text-white shadow-lg shadow-primary/20' : 'bg-foreground/5 hover:bg-primary/10 hover:text-primary'}`}>
+                                <Store className="w-5 h-5 opacity-50 group-hover:opacity-100" />
+                                <span className="font-black text-sm uppercase tracking-widest">Following</span>
                             </button>
                             <div className="pt-4 space-y-2 border-t border-white/5 mt-4">
                                 <button onClick={() => setShowSettings(true)} className="flex items-center gap-4 w-full p-4 rounded-2xl bg-foreground/5 hover:bg-primary/10 hover:text-primary transition-all group">
@@ -154,9 +209,42 @@ export const ProfilePage = () => {
                                                 </div>
                                             </div>
 
-                                            <div onClick={() => setSelectedOrder(order)} className="flex items-center justify-end text-primary group-hover:gap-2 transition-all">
-                                                <span className="text-xs font-black uppercase tracking-widest">View Receipt</span>
-                                                <ChevronRight className="w-4 h-4" />
+                                            <div className="flex items-center justify-between pt-2">
+                                                <div onClick={(e) => { e.stopPropagation(); setSelectedOrder(order); }} className="flex items-center text-primary group-hover:gap-2 transition-all">
+                                                    <span className="text-xs font-black uppercase tracking-widest">View Receipt</span>
+                                                    <ChevronRight className="w-4 h-4" />
+                                                </div>
+
+                                                {(order.status === 'pending' && (Date.now() - new Date(order.created_at).getTime()) < 86400000) && (
+                                                <div className="flex items-center gap-1.5">
+                                                    {confirmingCancelId === order.id ? (
+                                                        <div className="flex gap-1.5 bg-background border border-red-500/20 p-1 rounded-xl shadow-xl min-w-[140px]">
+                                                            <button 
+                                                                onClick={(e) => { e.stopPropagation(); handleCancelOrder(order.id); }}
+                                                                disabled={cancellingOrderId === order.id}
+                                                                className="flex-1 bg-red-500 text-white rounded-lg px-2.5 py-1.5 text-[9px] font-black uppercase italic tracking-wider flex items-center justify-center gap-1 hover:bg-red-600 transition-colors"
+                                                            >
+                                                                {cancellingOrderId === order.id ? <Loader2 className="w-3 h-3 animate-spin" /> : 'Confirm'}
+                                                            </button>
+                                                            <button 
+                                                                onClick={(e) => { e.stopPropagation(); setConfirmingCancelId(null); }}
+                                                                disabled={cancellingOrderId === order.id}
+                                                                className="flex-1 bg-foreground/5 text-foreground rounded-lg px-2.5 py-1.5 text-[9px] font-black uppercase italic tracking-wider hover:bg-foreground/10 transition-colors"
+                                                            >
+                                                                No
+                                                            </button>
+                                                        </div>
+                                                    ) : (
+                                                        <button
+                                                            onClick={(e) => { e.stopPropagation(); setConfirmingCancelId(order.id); }}
+                                                            className="px-3 py-1.5 bg-red-500/10 text-red-500 rounded-xl hover:bg-red-500 hover:text-white transition-all text-[9px] font-black uppercase tracking-widest flex items-center gap-1.5"
+                                                        >
+                                                            <X className="w-3 h-3" />
+                                                            Cancel Order
+                                                        </button>
+                                                    )}
+                                                </div>
+                                                )}
                                             </div>
                                         </motion.div>
                                     ))
@@ -274,6 +362,66 @@ export const ProfilePage = () => {
                                     <div className="py-24 text-center glass rounded-[2.5rem] opacity-30 italic">
                                         <Star className="w-16 h-16 mx-auto mb-4 opacity-20" />
                                         <p className="text-2xl font-black">No reviews posted yet.</p>
+                                    </div>
+                                )}
+                            </div>
+                        </>
+                    )}
+
+                    {activeTab === 'following' && (
+                        <>
+                            <div>
+                                <h1 className="text-5xl font-black tracking-tighter italic uppercase">Following</h1>
+                                <p className="opacity-50 mt-2 font-medium">Manage the merchant stores you've followed.</p>
+                            </div>
+
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                {loading ? (
+                                    [1, 2].map(i => <div key={i} className="h-40 glass rounded-[2.5rem] animate-pulse" />)
+                                ) : following.length > 0 ? (
+                                    following.map((store: any) => (
+                                        <motion.div
+                                            key={store.id}
+                                            initial={{ opacity: 0, scale: 0.95 }}
+                                            animate={{ opacity: 1, scale: 1 }}
+                                            className="glass p-6 rounded-[2.5rem] border-white/5 space-y-4 shadow-xl group relative overflow-hidden"
+                                        >
+                                            <div className="flex items-center gap-4">
+                                                <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center text-primary font-black uppercase text-2xl overflow-hidden shrink-0">
+                                                    {store.logo_url ? <img src={store.logo_url} className="w-full h-full object-cover" alt={store.store_name || store.full_name} /> : (store.store_name || store.full_name)[0]}
+                                                </div>
+                                                <div className="flex-grow min-w-0">
+                                                    <h3 className="font-black text-xl tracking-tighter truncate">{store.store_name || store.full_name}</h3>
+                                                    {(store.store_name || store.full_name)?.toLowerCase() !== store.store_slug?.toLowerCase() && (
+                                                        <p className="text-[10px] font-bold uppercase tracking-widest opacity-40 italic">@{store.store_slug}</p>
+                                                    )}
+                                                </div>
+                                            </div>
+
+                                            <div className="flex gap-2">
+                                                <button 
+                                                    onClick={() => window.location.hash = `#store/${store.store_slug}`}
+                                                    className="flex-grow bg-primary text-white py-3 rounded-xl font-black uppercase italic tracking-tighter text-xs shadow-lg shadow-primary/20 hover:scale-105 transition-all"
+                                                >
+                                                    Visit Store
+                                                </button>
+                                                <button 
+                                                    onClick={async () => {
+                                                        const { error } = await supabase.from('store_follows').delete().eq('user_id', user.id).eq('merchant_id', store.id);
+                                                        if (!error) setFollowing(prev => prev.filter(f => f.id !== store.id));
+                                                    }}
+                                                    className="px-4 bg-red-500/10 text-red-500 rounded-xl hover:bg-red-500 hover:text-white transition-all shadow-lg shadow-red-500/5 group/unfollow"
+                                                    title="Unfollow"
+                                                >
+                                                    <X className="w-4 h-4" />
+                                                </button>
+                                            </div>
+                                        </motion.div>
+                                    ))
+                                ) : (
+                                    <div className="col-span-full py-24 text-center glass rounded-[2.5rem] opacity-30 italic">
+                                        <Store className="w-16 h-16 mx-auto mb-4 opacity-20" />
+                                        <p className="text-2xl font-black">Not following any stores yet.</p>
                                     </div>
                                 )}
                             </div>

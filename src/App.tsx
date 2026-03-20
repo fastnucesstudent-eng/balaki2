@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, lazy, Suspense } from 'react';
 import Lenis from '@studio-freight/lenis';
 import {
     Loader2,
@@ -10,14 +10,8 @@ import { useCartStore } from './stores/useCartStore';
 import { useProducts } from './hooks/useProducts';
 import { useAuthStore } from './stores/useAuthStore';
 import { AuthPage } from './pages/AuthPage';
-import { AdminDashboard } from './pages/AdminDashboard';
-import { CheckoutPage } from './pages/CheckoutPage';
-import { MerchantDashboard } from './pages/MerchantDashboard';
 import { FomoPopups } from './components/FomoPopups';
-import { ProductDetails } from './pages/ProductDetails';
 import { TrackOrder } from './components/TrackOrder';
-import { ProfilePage } from './pages/ProfilePage';
-import { PolicyPage } from './pages/PolicyPage';
 import { Articles } from './components/Articles';
 import { SeoHiddenLinks } from './components/SeoHiddenLinks';
 import { Footer } from './components/Footer';
@@ -28,6 +22,33 @@ import { useToastStore } from './stores/useToastStore';
 import { RateProduct } from './pages/RateProduct.tsx';
 import { QuickViewModal } from './components/QuickViewModal';
 import { StoreFront } from './pages/StoreFront';
+
+// Lazy loaded components for better performance
+const AdminDashboard = lazy(() => import('./pages/AdminDashboard').then(m => ({ default: m.AdminDashboard }))) as any;
+const MerchantDashboard = lazy(() => import('./pages/MerchantDashboard').then(m => ({ default: m.MerchantDashboard }))) as any;
+const CheckoutPage = lazy(() => import('./pages/CheckoutPage').then(m => ({ default: m.CheckoutPage }))) as any;
+const ProfilePage = lazy(() => import('./pages/ProfilePage').then(m => ({ default: m.ProfilePage }))) as any;
+const ProductDetails = lazy(() => import('./pages/ProductDetails').then(m => ({ default: m.ProductDetails }))) as any;
+const MerchantRegistration = lazy(() => import('./pages/MerchantRegistration').then(m => ({ default: m.MerchantRegistration }))) as any;
+const MerchantStorePage = lazy(() => import('./pages/MerchantStorePage').then(m => ({ default: m.MerchantStorePage }))) as any;
+const PolicyPage = lazy(() => import('./pages/PolicyPage').then(m => ({ default: m.PolicyPage }))) as any;
+
+const LoadingOverlay = () => (
+    <div className="fixed inset-0 z-[150] bg-background/80 backdrop-blur-xl flex flex-col items-center justify-center gap-6">
+        <div className="relative">
+            <div className="w-16 h-16 border-4 border-primary/20 rounded-full animate-ping opacity-20" />
+            <Loader2 className="w-8 h-8 animate-spin text-primary absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2" />
+        </div>
+        <div className="flex flex-col items-center gap-1">
+            <h2 className="text-xl font-black uppercase italic tracking-tighter opacity-50">Loading Tarzify</h2>
+            <div className="flex gap-1">
+                {[1, 2, 3].map(i => (
+                    <div key={i} className="w-1 h-1 bg-primary rounded-full animate-bounce" style={{ animationDelay: `${i * 0.1}s` }} />
+                ))}
+            </div>
+        </div>
+    </div>
+);
 
 function App() {
     const [isCartOpen, setIsCartOpen] = useState(false);
@@ -46,13 +67,15 @@ function App() {
     const [showRateProduct, setShowRateProduct] = useState(false);
     const [rateProductParams, setRateProductParams] = useState<any>(null);
     const [quickViewProduct, setQuickViewProduct] = useState<any>(null);
+    const [showMerchantRegister, setShowMerchantRegister] = useState(false);
+    const [merchantStoreSlug, setMerchantStoreSlug] = useState<string | null>(null);
 
     // Pixel-based card width calculation
     const getCardWidth = () => {
         const vw = window.innerWidth;
-        if (vw < 640) return Math.floor((vw - 56) / 3);
-        if (vw < 1024) return Math.floor((vw - 72) / 3);
-        return Math.floor((Math.min(vw, 1280) - 120) / 4);
+        if (vw < 640) return Math.floor((vw - 40) / 2.1); // Perfect 2-per-row high-impact scale
+        if (vw < 1024) return Math.floor((vw - 72) / 2.5);
+        return Math.floor((Math.min(vw, 1280) - 120) / 4.2);
     };
     const [cardWidth, setCardWidth] = useState(getCardWidth);
     const { products, loading } = useProducts();
@@ -65,6 +88,13 @@ function App() {
     }, []);
 
     useEffect(() => {
+        const hash = window.location.hash;
+        if (hash.includes('type=signup') || hash.includes('type=magiclink')) {
+            setTimeout(() => {
+                useToastStore.getState().show('Email successfully verified! Welcome!', 'success');
+                window.location.hash = '#profile';
+            }, 1000);
+        }
         initialize();
     }, []);
 
@@ -85,8 +115,6 @@ function App() {
             if (window.location.hash && !window.location.hash.startsWith('#catalog')) {
                 window.location.hash = '';
             }
-            const catalogEl = document.getElementById('catalog');
-            if (catalogEl) catalogEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
         }
     }, [searchQuery]);
 
@@ -126,6 +154,12 @@ function App() {
             setShowMerchant(hash === '#merchant' && (role === 'merchant' || role === 'admin'));
             setShowCheckout(hash === '#checkout');
             setShowProfile(hash === '#profile');
+            setShowMerchantRegister(hash === '#merchant-register');
+            if (hash.startsWith('#store/')) {
+                setMerchantStoreSlug(hash.replace('#store/', '').split('?')[0]);
+            } else {
+                setMerchantStoreSlug(null);
+            }
             if (hash.startsWith('#rate-product')) {
                 const params = new URLSearchParams(hash.split('?')[1]);
                 setRateProductParams({
@@ -177,6 +211,8 @@ function App() {
 
     const renderContent = () => {
         if (showPolicy) return <PolicyPage type={showPolicy} />;
+        if (showMerchantRegister) return <MerchantRegistration onBack={() => window.location.hash = ''} />;
+        if (merchantStoreSlug) return <MerchantStorePage slug={merchantStoreSlug} onAddToCart={() => setIsCartOpen(true)} onQuickView={setQuickViewProduct} />;
         if (showAdmin && role === 'admin') return <AdminDashboard />;
         if (showMerchant && (role === 'merchant' || role === 'admin')) return <MerchantDashboard />;
         if (showResetPassword) return <ResetPassword onComplete={() => window.location.hash = ''} />;
@@ -215,6 +251,7 @@ function App() {
                 activeCategory={activeCategory}
                 setActiveCategory={setActiveCategory}
                 searchQuery={searchQuery}
+                onSearch={setSearchQuery}
                 cardWidth={cardWidth}
                 onAddToCart={() => setIsCartOpen(true)}
                 onQuickView={setQuickViewProduct}
@@ -226,7 +263,9 @@ function App() {
         <div className="min-h-screen bg-background selection:bg-primary selection:text-white overflow-x-hidden">
             <Navbar onCartClick={() => setIsCartOpen(true)} onLoginClick={() => setShowAuth(true)} onSearch={setSearchQuery} onCategoryClick={setActiveCategory} />
             <SEO />
-            {renderContent()}
+            <Suspense fallback={<LoadingOverlay />}>
+                {renderContent()}
+            </Suspense>
             <SeoHiddenLinks />
             <Articles />
             <Footer />

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, memo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ShoppingCart, User as UserIcon, Search, Menu, LogOut, Shield, LayoutDashboard, X, ChevronRight, Package } from 'lucide-react';
 import { ThemeToggle } from './ThemeToggle';
@@ -8,7 +8,7 @@ import { useAuthStore } from '../stores/useAuthStore';
 import { useCategories } from '../hooks/useCategories';
 import { useProducts } from '../hooks/useProducts';
 
-export const Navbar = ({
+export const Navbar = memo(({
     onCartClick,
     onLoginClick,
     onSearch,
@@ -132,6 +132,15 @@ export const Navbar = ({
                                             Account
                                         </button>
                                     </>
+                                )}
+                                {!user && (
+                                    <button
+                                        onClick={() => window.location.hash = '#merchant-register'}
+                                        className="text-sm font-black text-primary hover:scale-105 transition-all flex items-center gap-1.5"
+                                    >
+                                        Sell on Tarzify
+                                        <ChevronRight className="w-4 h-4" />
+                                    </button>
                                 )}
                             </div>
                         </div>
@@ -362,7 +371,7 @@ export const Navbar = ({
                                                     </button>
                                                 )}
                                                 {role === 'admin' && (
-                                                    <button onClick={() => { setIsMenuOpen(false); window.location.hash = '#admin'; }} className="flex items-center gap-3 h-11 px-5 bg-primary text-white rounded-xl shadow-lg shadow-primary/20 hover:scale-[1.01] transition-all text-[10px] font-black uppercase tracking-widest">
+                                                    <button onClick={() => { setIsMenuOpen(false); window.location.hash = '#admin'; }} className="flex items-center gap-3 h-11 px-5 bg-primary text-white rounded-xl shadow-lg shadow-primary/20 hover:scale-[1.01] transition-all text-[10px] font-black uppercase tracking-widest text-left">
                                                         <Shield className="w-4 h-4" />
                                                         Admin Panel
                                                     </button>
@@ -399,4 +408,4 @@ export const Navbar = ({
             </AnimatePresence>
         </motion.header>
     );
-};
+});

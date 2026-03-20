@@ -415,7 +415,7 @@ export const ProductDetails = ({ productId, onBack, onFly }: { productId: number
                             onMouseMove={handleMouseMove}
                             onMouseEnter={() => setIsHoveringImage(true)}
                             onMouseLeave={() => setIsHoveringImage(false)}
-                            className="aspect-square glass rounded-[2.5rem] sm:rounded-[3.5rem] overflow-hidden relative group shadow-2xl bg-white dark:bg-[#0a0a0b] flex items-center justify-center p-6 border border-foreground/5 cursor-crosshair"
+                            className="aspect-square glass rounded-[2.5rem] sm:rounded-[3.5rem] overflow-hidden relative group shadow-2xl bg-white dark:bg-[#0a0a0b] flex items-center justify-center p-2 sm:p-6 border border-foreground/5 cursor-crosshair"
                         >
                             {activeImage && (
                                 <img
@@ -503,9 +503,9 @@ export const ProductDetails = ({ productId, onBack, onFly }: { productId: number
                                         )}
                                     </div>
                                     {product.is_free_delivery && (
-                                        <div className="inline-flex items-center gap-2 px-4 py-2 bg-green-500/10 text-green-500 rounded-2xl border border-green-500/20 w-fit">
-                                            <Truck className="w-4 h-4" />
-                                            <span className="text-[10px] font-black uppercase tracking-widest">Free Express Delivery</span>
+                                        <div className="inline-flex items-center gap-1.5 px-3 md:px-4 py-1.5 md:py-2 bg-green-500/10 text-green-500 rounded-2xl border border-green-500/20 w-fit">
+                                            <Truck className="w-3.5 h-3.5 md:w-4 md:h-4" />
+                                            <span className="text-[9px] md:text-[10px] font-black uppercase tracking-widest">Free Express Delivery</span>
                                         </div>
                                     )}
                                     <div className="flex items-center gap-1.5 text-yellow-500">
@@ -835,7 +835,7 @@ export const ProductDetails = ({ productId, onBack, onFly }: { productId: number
                         </div>
                         <div
                             id={sliderId}
-                            className="flex flex-nowrap gap-3 md:gap-4 overflow-x-auto no-scrollbar scroll-smooth pb-2"
+                            className="flex flex-nowrap gap-2 md:gap-3 overflow-x-auto no-scrollbar scroll-smooth pb-1 px-1"
                         >
                             {productsLoading ? (
                                 [1, 2, 3, 4].map(i => (

@@ -175,37 +175,67 @@ export const ReceiptModal = ({ order, onClose }: { order: any, onClose: () => vo
                                                 </div>
                                             </div>
                                         </div>
-                                        <p className="font-black tracking-tighter">Rs. {(item.price * item.quantity).toLocaleString()}</p>
+                                        <p className="font-black tracking-tighter">Rs. {( (parseFloat(String(item.price)) || 0) * item.quantity).toLocaleString()}</p>
                                     </div>
                                 ))}
                             </div>
                         </div>
 
-                        {/* Totals */}
-                        <div className="border-t-2 border-dashed pt-8 mt-10">
+                        {/* Totals & Proof */}
+                        <div className="border-t-2 border-dashed pt-8 mt-10 space-y-10">
+                            {/* Shipping Proof Evidence (Visible to Customer) */}
+                            {order.shipping_proof_url && (
+                                <div className="space-y-4">
+                                    <h4 className="font-black uppercase opacity-30 text-[10px] tracking-[0.2em]">Merchant Shipping Proof</h4>
+                                    <div 
+                                        className="w-full h-64 rounded-[2rem] overflow-hidden border border-gray-100 shadow-xl cursor-pointer group relative"
+                                        onClick={() => window.open(order.shipping_proof_url, '_blank')}
+                                    >
+                                        <img 
+                                            src={order.shipping_proof_url} 
+                                            alt="Shipping Proof" 
+                                            className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" 
+                                        />
+                                        <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
+                                            <span className="bg-white text-black px-6 py-3 rounded-full font-black text-xs uppercase tracking-widest shadow-2xl">View Full Evidence</span>
+                                        </div>
+                                    </div>
+                                    <p className="text-[10px] opacity-40 italic font-medium text-center italic">This image was uploaded by the merchant as proof of dispatch.</p>
+                                </div>
+                            )}
+
                             <div className="space-y-3 mb-6 px-4">
                                 <div className="flex justify-between text-sm">
                                     <span className="font-bold opacity-40 uppercase tracking-widest">Subtotal</span>
                                     <span className="font-black italic">Rs. {(() => {
-                                        const sub = order.order_items?.reduce((sum: number, item: any) => sum + (item.price * item.quantity), 0) || 0;
+                                        const sub = order.order_items?.reduce((sum: number, item: any) => {
+                                            const p = parseFloat(String(item.price)) || 0;
+                                            return sum + (p * item.quantity);
+                                        }, 0) || 0;
                                         return sub.toLocaleString();
                                     })()}</span>
                                 </div>
                                 <div className="flex justify-between text-sm">
                                     <span className="font-bold opacity-40 uppercase tracking-widest">Shipping Charges</span>
                                     <span className="font-black italic text-primary">Rs. {(() => {
+                                        const shipAmount = parseFloat(String(order.shipping_amount)) || 0;
                                         if (order.shipping_amount !== undefined && order.shipping_amount !== null) {
-                                            return order.shipping_amount.toLocaleString();
+                                            return shipAmount.toLocaleString();
                                         }
-                                        const sub = order.order_items?.reduce((sum: number, item: any) => sum + (item.price * item.quantity), 0) || 0;
-                                        const ship = order.total_amount - sub + (order.discount_amount || 0);
+                                        const sub = order.order_items?.reduce((sum: number, item: any) => {
+                                            const p = parseFloat(String(item.price)) || 0;
+                                            return sum + (p * item.quantity);
+                                        }, 0) || 0;
+                                        const discount = parseFloat(String(order.discount_amount)) || 0;
+                                        const total = parseFloat(String(order.total_amount)) || 0;
+                                        const ship = total - sub + discount;
                                         return ship.toLocaleString();
                                     })()}</span>
                                 </div>
-                                {order.discount_amount > 0 && (
+                                {parseFloat(String(order.discount_amount)) > 0 && (
                                     <div className="flex justify-between text-sm text-green-600">
                                         <span className="font-bold uppercase tracking-widest">Voucher Discount</span>
-                                        <span className="font-black italic">- Rs. {order.discount_amount.toLocaleString()}</span>
+                                        <span className="font-black italic">- Rs. {parseFloat(String(order.discount_amount)).toLocaleString()}</span>
                                     </div>
                                 )}
                             </div>
@@ -216,7 +246,7 @@ export const ReceiptModal = ({ order, onClose }: { order: any, onClose: () => vo
                                     <p className="text-[10px] font-bold opacity-30 italic">Payment via {order.payment_method?.toUpperCase() || 'COD'}</p>
                                 </div>
                                 <div className="text-right">
-                                    <p className="text-4xl font-black tracking-tighter">Rs. {order.total_amount.toLocaleString()}</p>
+                                    <p className="text-4xl font-black tracking-tighter">Rs. {parseFloat(String(order.total_amount)).toLocaleString()}</p>
                                 </div>
                             </div>
                         </div>

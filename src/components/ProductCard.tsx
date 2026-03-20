@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion';
-import { ShoppingCart, Star, Search } from 'lucide-react';
+import { ShoppingCart, Star } from 'lucide-react';
 import { useState } from 'react';
 import { useCartStore } from '../stores/useCartStore';
 import { useToastStore } from '../stores/useToastStore';
@@ -21,7 +21,7 @@ export const ProductCard = ({ product, onAddToCart, onQuickView }: ProductCardPr
     const [mainImageError, setMainImageError] = useState(false);
     const [secondaryImageError, setSecondaryImageError] = useState(false);
 
-    // Calculate dynamic price range if pricing_matrix exists
+    // Calculate dynamic price range
     let minPrice = price;
     let maxPrice = price;
     let hasRange = false;
@@ -36,12 +36,9 @@ export const ProductCard = ({ product, onAddToCart, onQuickView }: ProductCardPr
     }
 
     const displayOutPrice = minPrice;
-
-    // Calculate total stock if variants exist
     const totalStock = pricing_matrix && pricing_matrix.length > 0
         ? pricing_matrix.reduce((acc: number, v: any) => acc + (v.stock || 0), 0)
         : stock;
-
     const isOOS = totalStock === 0;
 
     const discount = compare_at_price && compare_at_price > displayOutPrice
@@ -51,8 +48,6 @@ export const ProductCard = ({ product, onAddToCart, onQuickView }: ProductCardPr
     const handleAddToCart = (e: React.MouseEvent) => {
         e.stopPropagation();
         if (isOOS) return;
-        
-        // If product has variants, must select one first - open QuickView instead
         if (pricing_matrix && pricing_matrix.length > 0 && dynamic_attributes && Object.keys(dynamic_attributes).length > 0) {
             if (onQuickView) {
                 onQuickView(product);
@@ -60,7 +55,6 @@ export const ProductCard = ({ product, onAddToCart, onQuickView }: ProductCardPr
                 return;
             }
         }
-
         addItem(product);
         toast.show(`${name} added to cart!`, 'success');
         if (onAddToCart) onAddToCart(product);
@@ -68,135 +62,78 @@ export const ProductCard = ({ product, onAddToCart, onQuickView }: ProductCardPr
 
     return (
         <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            whileInView={{ opacity: 1, y: 0 }}
+            initial={{ opacity: 0, scale: 0.95 }}
+            whileInView={{ opacity: 1, scale: 1 }}
             viewport={{ once: true }}
             whileHover={{ y: -4 }}
             onClick={() => { window.location.hash = '#' + generateProductURL(name, sku); }}
-            className={`group relative bg-white dark:bg-zinc-900/50 rounded-2xl md:rounded-[2rem] overflow-hidden border border-gray-100 dark:border-white/5 flex flex-col h-full cursor-pointer hover:shadow-[0_20px_40px_rgba(0,0,0,0.05)] transition-all duration-500 ${isOOS ? 'opacity-90' : ''}`}
+            className={`group relative bg-white dark:bg-zinc-900/40 rounded-[2rem] md:rounded-[2.5rem] overflow-hidden border border-gray-100 dark:border-white/5 flex flex-col h-full cursor-pointer hover:shadow-2xl transition-all duration-500 ${isOOS ? 'opacity-90' : ''}`}
         >
-            {/* Image Container */}
-            <div className="relative aspect-square overflow-hidden bg-gray-50 dark:bg-zinc-800/20">
-                
-                {/* Badges Overlay - Single Stacked Container to prevent collision on narrow mobile cards */}
-                <div className="absolute top-2 left-2 flex flex-col items-start gap-1 z-10">
+            {/* Image Section - Full bleed square on mobile */}
+            <div className="relative aspect-square md:aspect-[4/5] overflow-hidden bg-[#f3f4f6] dark:bg-zinc-800/20">
+                {/* Badges Overlay */}
+                <div className="absolute top-2 left-2 md:top-4 md:left-4 flex flex-col items-start gap-1 z-10">
                     {isOOS && (
-                        <div className="bg-red-500/90 backdrop-blur-md text-white text-[6px] md:text-[8px] font-black px-1.5 py-0.5 md:px-2 md:py-1 rounded-md uppercase italic shadow-lg shadow-red-500/20">
+                        <div className="bg-red-500 text-white text-[7px] md:text-[9px] font-black px-1.5 md:px-2 py-0.5 rounded-full uppercase tracking-tighter shadow-lg">
                             Sold Out
                         </div>
                     )}
                     {discount > 0 && !isOOS && (
-                        <div className="bg-primary/95 backdrop-blur-md text-white text-[6px] md:text-[8px] font-black px-1.5 py-0.5 md:px-2 md:py-1 rounded-md uppercase italic shadow-lg shadow-primary/20">
-                            -{discount}% OFF
+                        <div className="bg-[#ff5e00] text-white text-[7px] md:text-[9px] font-black px-1.5 md:px-2 py-0.5 rounded-full uppercase tracking-tighter shadow-lg">
+                            -{discount}%
                         </div>
                     )}
                     {is_free_delivery && (
-                        <div className="bg-green-500/95 backdrop-blur-sm text-white text-[6px] md:text-[8px] font-black px-1.5 py-0.5 md:px-2 md:py-1 rounded-md shadow-xl shadow-green-500/20 uppercase italic tracking-tighter flex items-center gap-1 group-hover:-translate-y-0.5 transition-transform">
+                        <div className="bg-green-500 text-white text-[6px] md:text-[8px] font-black px-1.5 md:px-2 py-0.5 rounded-full uppercase tracking-tighter flex items-center gap-0.5 shadow-lg">
                             <span className="w-1 h-1 bg-white rounded-full animate-pulse" />
                             Free Delivery
                         </div>
                     )}
                 </div>
 
-                {finalImage && (
-                    <img
-                        src={mainImageError ? PLACEHOLDER_IMAGE : finalImage}
-                        alt={name}
-                        onError={() => setMainImageError(true)}
-                        className={`w-full h-full object-cover transition-all duration-1000 scale-100 group-hover:scale-110 ${(image_urls?.length ?? 0) > 1 ? 'group-hover:opacity-0' : ''}`}
-                    />
-                )}
+                <img
+                    src={mainImageError ? PLACEHOLDER_IMAGE : (finalImage || PLACEHOLDER_IMAGE)}
+                    alt={name}
+                    onError={() => setMainImageError(true)}
+                    className={`w-full h-full object-cover transition-transform duration-700 group-hover:scale-110 ${(image_urls?.length ?? 0) > 1 ? 'group-hover:opacity-0' : ''}`}
+                />
 
-                {/* Secondary Image on Hover */}
                 {(image_urls?.length ?? 0) > 1 && (
                     <img
                         src={secondaryImageError ? PLACEHOLDER_IMAGE : image_urls![1]}
                         alt={name}
                         onError={() => setSecondaryImageError(true)}
-                        className="absolute inset-0 w-full h-full object-cover opacity-0 group-hover:opacity-100 transition-all duration-1000 scale-110 group-hover:scale-100"
+                        className="absolute inset-0 w-full h-full object-cover opacity-0 group-hover:opacity-100 transition-all duration-700 scale-110 group-hover:scale-100"
                     />
                 )}
-
-                {/* Quick Add Overlay & Quick View Button - Desktop Only */}
-                <div className="absolute inset-0 bg-black/10 opacity-0 group-hover:opacity-100 transition-opacity hidden md:flex items-center justify-center gap-2 z-20">
-                    {onQuickView && (
-                        <button
-                            onClick={(e) => { e.stopPropagation(); onQuickView(product); }}
-                            className="p-3 bg-white dark:bg-zinc-800 text-black dark:text-white rounded-full shadow-2xl hover:scale-110 active:scale-95 transition-all pointer-events-auto"
-                            title="Quick View"
-                        >
-                            <Search className="w-5 h-5" />
-                        </button>
-                    )}
-                    <button
-                        onClick={handleAddToCart}
-                        disabled={isOOS}
-                        className={`p-3 rounded-full shadow-2xl transition-all pointer-events-auto ${isOOS ? 'bg-gray-200 text-gray-400 cursor-not-allowed' : 'bg-primary text-white hover:scale-110 active:scale-95'}`}
-                        title="Add to Cart"
-                    >
-                        <ShoppingCart className="w-5 h-5" />
-                    </button>
-                </div>
             </div>
 
-            {/* Info Section */}
-            <div className="p-2.5 md:p-3.5 flex flex-col flex-grow">
-                <div className="flex flex-col gap-0.5 mb-2">
-                    <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-primary/60 dark:text-primary/40">{category}</p>
-                    <h3 className="text-xs md:text-sm font-bold text-gray-800 dark:text-white line-clamp-2 leading-tight italic group-hover:text-primary transition-colors">
-                        {name}
-                    </h3>
-
-                    {/* Variant Swatches (Daraz-style) */}
-                    {pricing_matrix && pricing_matrix.length > 0 && (
-                        <div className="flex flex-wrap gap-1 mt-2">
-                            {pricing_matrix.slice(0, 5).map((v: any, i: number) => {
-                                const combo = v.variant_combo || v.combination;
-                                if (!combo) return null;
-                                const colorVal = Object.entries(combo).find(([k]) => k.toLowerCase().includes('color') || k.toLowerCase().includes('colour'))?.[1];
-                                if (!colorVal && !v.image_url) return null;
-
-                                return (
-                                    <div
-                                        key={i}
-                                        className="w-4 h-4 rounded-full border border-gray-100 dark:border-white/10 overflow-hidden bg-gray-100"
-                                        title={String(colorVal || 'Variant')}
-                                    >
-                                        {v.image_url ? (
-                                            <img src={v.image_url} alt="" className="w-full h-full object-cover" />
-                                        ) : (
-                                            <div className="w-full h-full" style={{ backgroundColor: String(colorVal).toLowerCase() }} />
-                                        )}
-                                    </div>
-                                );
-                            })}
-                            {pricing_matrix.length > 5 && (
-                                <span className="text-[8px] font-bold opacity-30 flex items-center">+{pricing_matrix.length - 5}</span>
-                            )}
-                        </div>
-                    )}
-
+            {/* Content Section */}
+            <div className="p-3 md:p-5 flex flex-col flex-grow relative bg-white dark:bg-zinc-900/60 transition-colors group-hover:bg-gray-50/50 dark:group-hover:bg-zinc-800/50">
+                <div className="flex flex-col gap-0.5 md:gap-1 mb-2 pr-10">
+                    <span className="text-[9px] md:text-xs font-black text-primary uppercase tracking-tight truncate opacity-80">{category || 'Category'}</span>
+                    <h3 className="text-xs md:text-base font-black text-gray-900 dark:text-white uppercase italic tracking-tighter line-clamp-1 leading-none group-hover:text-primary transition-colors">{name}</h3>
+                    
                     {avg_rating !== undefined && avg_rating > 0 && (
-                        <div className="flex items-center gap-1 mt-1.5 bg-yellow-400/5 w-fit px-1 py-0.5 rounded-md border border-yellow-400/10 scale-90 origin-left">
-                            <Star className="w-2.5 h-2.5 fill-yellow-400 text-yellow-400" />
-                            <span className="text-[9px] font-black text-yellow-600 dark:text-yellow-400">
-                                {avg_rating.toFixed(1)} <span className="opacity-40">({total_reviews || 0})</span>
+                        <div className="flex items-center gap-0.5 mt-1 opacity-60">
+                            <Star className="w-2 md:w-3 h-2 md:h-3 fill-yellow-400 text-yellow-400" />
+                            <span className="text-[8px] md:text-[10px] font-bold">
+                                {avg_rating.toFixed(1)} ({total_reviews || 0})
                             </span>
                         </div>
                     )}
                 </div>
 
-                <div className="mt-auto pt-2 border-t border-gray-50 dark:border-white/5 flex items-end justify-between">
-                    {/* Price Section */}
+                <div className="mt-auto flex items-end justify-between">
                     <div className="flex flex-col">
                         {compare_at_price && compare_at_price > displayOutPrice && (
-                            <span className="text-[10px] text-gray-400 line-through font-bold">
+                            <span className="text-[9px] md:text-[11px] text-gray-400 line-through font-bold leading-none mb-0.5">
                                 Rs. {compare_at_price.toLocaleString()}
                             </span>
                         )}
-                        <span className="text-base md:text-lg font-black italic tracking-tighter text-black dark:text-white leading-none">
+                        <span className="text-sm md:text-xl font-black italic tracking-tighter text-black dark:text-white leading-none">
                             {hasRange
-                                ? `Rs. ${minPrice.toLocaleString()} - ${maxPrice.toLocaleString()}`
+                                ? `Rs. ${minPrice.toLocaleString()}+`
                                 : `Rs. ${displayOutPrice.toLocaleString()}`
                             }
                         </span>
@@ -205,9 +142,9 @@ export const ProductCard = ({ product, onAddToCart, onQuickView }: ProductCardPr
                     <button
                         onClick={handleAddToCart}
                         disabled={isOOS}
-                        className={`p-2 md:p-2.5 rounded-xl transition-all active:scale-90 hidden md:block ${isOOS ? 'bg-gray-100 dark:bg-zinc-800 text-gray-300 dark:text-zinc-600' : 'bg-primary text-white shadow-lg shadow-primary/20 hover:scale-110'}`}
+                        className={`w-9 h-9 md:w-12 md:h-12 flex items-center justify-center rounded-xl md:rounded-2xl transition-all active:scale-90 ${isOOS ? 'bg-gray-100 dark:bg-zinc-800 text-gray-300 dark:text-zinc-600 cursor-not-allowed' : 'bg-[#ff5e00] text-white shadow-lg shadow-[#ff5e00]/20 hover:scale-110'}`}
                     >
-                        <ShoppingCart className="w-4 h-4 shadow-sm" />
+                        <ShoppingCart className="w-4 h-4 md:w-6 md:h-6" />
                     </button>
                 </div>
             </div>

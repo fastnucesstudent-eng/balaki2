@@ -31,6 +31,7 @@ export interface Product {
     pricing_matrix?: any[];
     sale_percentage?: number;
     is_free_delivery?: boolean;
+    merchant_name?: string;
 }
 
 interface ProductState {
@@ -38,7 +39,7 @@ interface ProductState {
     loading: boolean;
     error: string | null;
     lastFetched: number | null;
-    fetchProducts: (force?: boolean) => Promise<void>;
+    fetchProducts: (force?: boolean, isAdmin?: boolean) => Promise<void>;
     subscribe: () => () => void;
 }
 
@@ -83,7 +84,7 @@ export const useProductStore = create<ProductState>((set, get) => ({
         return () => { };
     },
 
-    fetchProducts: async (force = false) => {
+    fetchProducts: async (force = false, isAdmin = false) => {
         const { lastFetched, loading } = get();
 
         // Only fetch if forced or if data is older than 5 minutes (or never fetched)
@@ -103,7 +104,7 @@ export const useProductStore = create<ProductState>((set, get) => ({
         try {
             const { data, error } = await supabase
                 .from('products')
-                .select('*, reviews(rating)')
+                .select('*, reviews(rating), profiles!merchant_id(merchant_status, store_name)')
                 .is('deleted_at', null)
                 .order('id', { ascending: true });
 
@@ -112,22 +113,34 @@ export const useProductStore = create<ProductState>((set, get) => ({
 
             if (error) throw error;
 
-            const enriched = (data || []).map((p: any) => {
-                const revs: { rating: number }[] = p.reviews || [];
-                const manualTotal = Number(p.total_reviews) || 0;
-                const manualAvg = Number(p.avg_rating) || 0;
+            const enriched = (data || [])
+                .filter((p: any) => {
+                    if (isAdmin) return true; // Admins see everything
+                    // Show admin products (no merchant_id) or approved merchant products
+                    if (!p.merchant_id) return true;
+                    return p.profiles?.merchant_status === 'approved';
+                })
+                .map((p: any) => {
+                    const revs: { rating: number }[] = p.reviews || [];
+                    const manualTotal = Number(p.total_reviews) || 0;
+                    const manualAvg = Number(p.avg_rating) || 0;
 
-                // Logic: Treat manual as "base" and real reviews as additional
-                const combinedTotal = manualTotal + revs.length;
-                let combinedAvg = manualAvg;
+                    // Logic: Treat manual as "base" and real reviews as additional
+                    const combinedTotal = manualTotal + revs.length;
+                    let combinedAvg = manualAvg;
 
-                if (revs.length > 0) {
-                    const sumReal = revs.reduce((sum, r) => sum + r.rating, 0);
-                    combinedAvg = (manualAvg * manualTotal + sumReal) / combinedTotal;
-                }
+                    if (revs.length > 0) {
+                        const sumReal = revs.reduce((sum, r) => sum + r.rating, 0);
+                        combinedAvg = (manualAvg * manualTotal + sumReal) / combinedTotal;
+                    }
 
-                return { ...p, avg_rating: combinedAvg, total_reviews: combinedTotal };
-            });
+                    return { 
+                        ...p, 
+                        avg_rating: combinedAvg, 
+                        total_reviews: combinedTotal,
+                        merchant_name: p.profiles?.store_name || 'Tarzify'
+                    };
+                });
 
             set({
                 products: enriched,

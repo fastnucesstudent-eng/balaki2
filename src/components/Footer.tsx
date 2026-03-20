@@ -1,6 +1,7 @@
 import { MapPin, Phone, Mail, Instagram, Twitter, Facebook } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useProductStore } from '../stores/useProductStore';
+import { memo } from 'react';
 
 const POPULAR_SEARCHES = [
     "buy online Pakistan", "tarzify online store", "online shopping Lahore", "online shopping Karachi",
@@ -10,7 +11,7 @@ const POPULAR_SEARCHES = [
     "buy watches online", "buy earbuds Pakistan", "buy laptops online Pakistan", "tarzify deals",
 ];
 
-export const Footer = () => {
+export const Footer = memo(() => {
     const products = useProductStore(s => s.products);
 
     // Store { name, sku } so we can build clickable links
@@ -264,4 +265,4 @@ export const Footer = () => {
             </motion.div>
         </footer>
     );
-};
+});
