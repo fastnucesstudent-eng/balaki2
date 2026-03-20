@@ -304,7 +304,6 @@ export const MerchantDashboard = () => {
     };
 
     const handleDeleteBanner = async (id: number) => {
-        if (!confirm('Are you sure you want to delete this banner request?')) return;
         try {
             const { error } = await supabase.from('banners').delete().eq('id', id);
             if (error) throw error;
@@ -646,7 +645,6 @@ export const MerchantDashboard = () => {
         }
     };
     const handleDeleteProduct = async (id: number) => {
-        if (!confirm('Are you sure you want to delete this product?')) return;
         try {
             // Soft Delete: Mark as deleted to preserve order history
             const { error } = await supabase

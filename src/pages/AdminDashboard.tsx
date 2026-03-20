@@ -261,7 +261,6 @@ export const AdminDashboard = () => {
     };
 
     const handleDeleteProduct = async (id: number) => {
-        if (!confirm('Are you sure you want to delete this product?')) return;
         try {
             const { error } = await supabase
                 .from('products')
@@ -324,11 +323,9 @@ export const AdminDashboard = () => {
 
     const handleSeed = async () => {
         const VITE_API_URL = import.meta.env.VITE_API_URL || '';
-        const isLocal = VITE_API_URL.includes('localhost') || VITE_API_URL.includes('127.0.0.1');
-
-        if (!confirm(`This will seed demo products to: ${VITE_API_URL || 'DEFAULT'}\n\n${isLocal ? 'DEVELOPMENT MODE: hitting local server' : 'PRODUCTION MODE: hitting live api'}\n\nContinue?`)) return;
 
         setDataLoading(true);
+        useToastStore.getState().show('Seeding demo products...', 'success');
         try {
             const res = await fetch(`${VITE_API_URL}/setup/seed`, {
                 method: 'POST',
@@ -342,7 +339,7 @@ export const AdminDashboard = () => {
 
             const data = await res.json();
             if (data.success) {
-                useToastStore.getState().show('Success: ' + data.message, 'success');
+                useToastStore.getState().show('Seed complete: ' + data.message, 'success');
                 await refetch();
                 await refetchStats();
             } else {
@@ -374,8 +371,7 @@ export const AdminDashboard = () => {
         setRenamingId(null);
     };
 
-    const handleDeleteCategory = async (id: number, name: string) => {
-        if (!confirm(`Are you sure you want to delete "${name}"? This might affect products using this category.`)) return;
+    const handleDeleteCategory = async (id: number, _name: string) => {
         await deleteCategory(id);
     };
 
@@ -413,7 +409,6 @@ export const AdminDashboard = () => {
     };
 
     const handleDeleteBanner = async (id: number) => {
-        if (!confirm('Delete this banner?')) return;
         try {
             const { error } = await supabase.from('banners').delete().eq('id', id);
             if (error) throw error;
