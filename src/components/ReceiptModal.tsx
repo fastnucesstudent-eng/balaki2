@@ -183,12 +183,41 @@ export const ReceiptModal = ({ order, onClose }: { order: any, onClose: () => vo
 
                         {/* Totals */}
                         <div className="border-t-2 border-dashed pt-8 mt-10">
+                            <div className="space-y-3 mb-6 px-4">
+                                <div className="flex justify-between text-sm">
+                                    <span className="font-bold opacity-40 uppercase tracking-widest">Subtotal</span>
+                                    <span className="font-black italic">Rs. {(() => {
+                                        const sub = order.order_items?.reduce((sum: number, item: any) => sum + (item.price * item.quantity), 0) || 0;
+                                        return sub.toLocaleString();
+                                    })()}</span>
+                                </div>
+                                <div className="flex justify-between text-sm">
+                                    <span className="font-bold opacity-40 uppercase tracking-widest">Shipping Charges</span>
+                                    <span className="font-black italic text-primary">Rs. {(() => {
+                                        if (order.shipping_amount !== undefined && order.shipping_amount !== null) {
+                                            return order.shipping_amount.toLocaleString();
+                                        }
+                                        const sub = order.order_items?.reduce((sum: number, item: any) => sum + (item.price * item.quantity), 0) || 0;
+                                        const ship = order.total_amount - sub + (order.discount_amount || 0);
+                                        return ship.toLocaleString();
+                                    })()}</span>
+                                </div>
+                                {order.discount_amount > 0 && (
+                                    <div className="flex justify-between text-sm text-green-600">
+                                        <span className="font-bold uppercase tracking-widest">Voucher Discount</span>
+                                        <span className="font-black italic">- Rs. {order.discount_amount.toLocaleString()}</span>
+                                    </div>
+                                )}
+                            </div>
+
                             <div className="flex justify-between items-center bg-black text-white p-8 rounded-[2.5rem] shadow-2xl">
                                 <div className="space-y-1">
                                     <p className="text-xs font-black uppercase tracking-widest opacity-50">Grand Total Amount</p>
-                                    <p className="text-[10px] font-bold opacity-30 italic">Payment via ${order.payment_method?.toUpperCase() || 'COD'}</p>
+                                    <p className="text-[10px] font-bold opacity-30 italic">Payment via {order.payment_method?.toUpperCase() || 'COD'}</p>
                                 </div>
-                                <p className="text-4xl font-black tracking-tighter">Rs. {order.total_amount.toLocaleString()}</p>
+                                <div className="text-right">
+                                    <p className="text-4xl font-black tracking-tighter">Rs. {order.total_amount.toLocaleString()}</p>
+                                </div>
                             </div>
                         </div>
                     </div>

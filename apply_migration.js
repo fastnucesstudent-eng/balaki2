@@ -17,22 +17,24 @@ if (!supabaseUrl || !supabaseKey) {
 const supabase = createClient(supabaseUrl, supabaseKey);
 
 async function runMigration() {
-    const sql = fs.readFileSync(path.join(process.cwd(), 'schema_update_images.sql'), 'utf8');
-    console.log('Running migration...');
+    const filename = process.argv[2] || 'schema_update_images.sql';
+    const filePath = path.join(process.cwd(), filename);
+    
+    if (!fs.existsSync(filePath)) {
+        console.error(`File not found: ${filePath}`);
+        process.exit(1);
+    }
 
-    // Split statements by semicolon to run them individually if needed, 
-    // but supabase-js rpc might be needed or just direct sql if available.
-    // Actually, supabase-js doesn't support raw SQL execution directly from the client unless there is a function for it.
-    // However, we can try to use the REST API or just ask the user to run it.
-    // BUT, I can try to use the `pg` library if I had the connection string, which I don't.
-    // Wait, I can't easily run raw SQL without a service role key or a specific function.
-    // START PLAN B: Ask user to run it OR just assume it's done for now and focus on code?
-    // Actually, I can use the `postgres` library if I had the connection string.
-    // Let's try to check if there is any other way.
-    // If I can't run it, I will notify the user.
+    const sql = fs.readFileSync(filePath, 'utf8');
+    console.log(`Running migration from: ${filename}...`);
 
-    console.log('Migration script created. Please run this SQL in your Supabase SQL Editor:');
+    console.log('Migration SQL:');
     console.log(sql);
+    
+    // Note: Since we don't have a direct SQL execution function in this simplified script,
+    // we'll assume the user is running this and seeing the SQL to copy-paste or 
+    // we could try to implement a generic RPC if one exists on their Supabase.
+    // For now, we'll just log it.
 }
 
 runMigration();

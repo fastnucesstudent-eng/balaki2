@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ShoppingCart, User as UserIcon, Search, Menu, LogOut, Shield, LayoutDashboard, X, ChevronRight, Package } from 'lucide-react';
 import { ThemeToggle } from './ThemeToggle';
@@ -27,6 +27,15 @@ export const Navbar = ({
     const [isProfileOpen, setIsProfileOpen] = useState(false);
     const [isMenuOpen, setIsMenuOpen] = useState(false);
     const [isCategoriesOpen, setIsCategoriesOpen] = useState(false);
+    const [isScrolled, setIsScrolled] = useState(false);
+
+    useEffect(() => {
+        const handleScroll = () => {
+            setIsScrolled(window.scrollY > 10);
+        };
+        window.addEventListener('scroll', handleScroll);
+        return () => window.removeEventListener('scroll', handleScroll);
+    }, []);
 
     // Only show categories that have products
     const activeCategoryNames = new Set(products.map(p => p.category));
@@ -43,7 +52,7 @@ export const Navbar = ({
         <motion.header
             initial={{ y: -100 }}
             animate={{ y: 0 }}
-            className="fixed top-0 left-0 w-full z-50 px-2 sm:px-6 py-2 sm:py-4 bg-transparent no-print"
+            className={`fixed top-0 left-0 w-full z-50 px-2 sm:px-6 py-2 sm:py-4 transition-all duration-300 no-print ${isScrolled ? 'bg-background/80 backdrop-blur-xl border-b border-white/5 py-1 sm:py-2' : 'bg-transparent'}`}
         >
             <nav className="max-w-7xl mx-auto glass rounded-full px-4 sm:px-6 py-2 sm:py-3 flex items-center justify-between shadow-2xl border-white/10">
                 <div className="flex items-center gap-8">
@@ -96,7 +105,7 @@ export const Navbar = ({
                                     onClick={() => window.location.hash = '#profile'}
                                     className="text-sm font-black text-foreground hover:scale-105 transition-transform"
                                 >
-                                    Profile
+                                    Account
                                 </button>
                             </>
                         )}
@@ -104,15 +113,15 @@ export const Navbar = ({
                 </div>
 
                 <div className="flex items-center gap-4">
-                    <div className="hidden sm:flex items-center bg-foreground/5 rounded-full px-3 py-1.5 focus-within:ring-2 ring-primary/30 transition-all">
-                        <Search className="w-4 h-4 opacity-50" />
+                    <div className="hidden sm:flex items-center bg-foreground/5 border border-foreground/10 shadow-sm rounded-full px-4 py-2 focus-within:ring-2 ring-primary/30 focus-within:border-primary/50 transition-all group/search">
+                        <Search className="w-4 h-4 opacity-50 group-focus-within/search:text-primary group-focus-within/search:opacity-100 transition-all" />
                         <input
                             type="text"
                             id="search"
                             name="search"
-                            placeholder="Search TARZIFY..."
+                            placeholder="Search items..."
                             onChange={(e) => onSearch(e.target.value)}
-                            className="bg-transparent border-none focus:outline-none text-sm px-2 w-32 lg:w-48"
+                            className="bg-transparent border-none focus:outline-none text-sm px-2 w-32 lg:w-48 font-medium"
                         />
                     </div>
 
@@ -160,7 +169,7 @@ export const Navbar = ({
                                                 <div className="space-y-1">
                                                     <button onClick={() => { setIsProfileOpen(false); window.location.hash = '#profile'; }} className="flex items-center gap-3 w-full p-3 rounded-xl hover:bg-primary/10 hover:text-primary transition-all text-[10px] font-black uppercase tracking-widest text-left">
                                                         <UserIcon className="w-4 h-4 opacity-50" />
-                                                        My Profile
+                                                        Account Settings
                                                     </button>
 
                                                     {(role === 'merchant' || role === 'admin') && (
@@ -323,7 +332,7 @@ export const Navbar = ({
                                                 )}
                                                 <button onClick={() => { setIsMenuOpen(false); window.location.hash = '#profile'; }} className="flex items-center gap-3 h-11 px-5 bg-foreground/5 rounded-xl hover:bg-primary/5 transition-all text-[10px] font-black uppercase tracking-widest">
                                                     <UserIcon className="w-4 h-4 opacity-50" />
-                                                    My Profile
+                                                    Account
                                                 </button>
                                                 <button onClick={handleSignOut} className="flex items-center gap-3 h-11 px-5 bg-red-500/10 text-red-500 rounded-xl hover:bg-red-500/20 transition-all text-[10px] font-black uppercase tracking-widest text-left">
                                                     <LogOut className="w-4 h-4 opacity-50" />

@@ -1,34 +1,23 @@
 import { motion } from 'framer-motion';
-import { ShoppingCart, Star } from 'lucide-react';
+import { ShoppingCart, Star, Search } from 'lucide-react';
 import { useState } from 'react';
 import { useCartStore } from '../stores/useCartStore';
+import { useToastStore } from '../stores/useToastStore';
 import { generateProductURL } from '../lib/slugify';
 
 const PLACEHOLDER_IMAGE = 'https://images.unsplash.com/photo-1560393464-5c69a73c5770?q=80&w=800&auto=format&fit=crop';
 
 interface ProductCardProps {
-    id: number;
-    name: string;
-    price: number;
-    image: string;
-    category: string;
-    description?: string;
-    rating?: number;
-    stock?: number;
-    sku: string;
-    image_urls?: string[];
-    compare_at_price?: number;
-    avg_rating?: number;
-    total_reviews?: number;
-    pricing_matrix?: any[];
-    onFly?: (e: React.MouseEvent) => void;
-    sale_percentage?: number;
-    is_free_delivery?: boolean;
+    product: any;
+    onAddToCart: (product: any) => void;
+    onQuickView?: (product: any) => void;
 }
 
-export const ProductCard = (product: ProductCardProps) => {
-    const { name, price, image, category, stock = 1, sku, image_urls = [], compare_at_price, avg_rating, pricing_matrix, onFly, sale_percentage = 0, is_free_delivery = false } = product;
+export const ProductCard = ({ product, onAddToCart, onQuickView }: ProductCardProps) => {
+    const { name, price, image, image_url, category, stock = 1, sku, image_urls = [], compare_at_price, avg_rating, pricing_matrix, sale_percentage = 0, is_free_delivery = false, total_reviews, dynamic_attributes } = product;
+    const finalImage = image || image_url;
     const addItem = useCartStore((state) => state.addItem);
+    const toast = useToastStore();
     const [mainImageError, setMainImageError] = useState(false);
     const [secondaryImageError, setSecondaryImageError] = useState(false);
 
@@ -38,7 +27,7 @@ export const ProductCard = (product: ProductCardProps) => {
     let hasRange = false;
 
     if (pricing_matrix && pricing_matrix.length > 0) {
-        const prices = pricing_matrix.map(v => v.price).filter(p => typeof p === 'number');
+        const prices = pricing_matrix.map((v: any) => v.price).filter((p: any) => typeof p === 'number');
         if (prices.length > 0) {
             minPrice = Math.min(...prices);
             maxPrice = Math.max(...prices);
@@ -50,20 +39,31 @@ export const ProductCard = (product: ProductCardProps) => {
 
     // Calculate total stock if variants exist
     const totalStock = pricing_matrix && pricing_matrix.length > 0
-        ? pricing_matrix.reduce((acc, v) => acc + (v.stock || 0), 0)
+        ? pricing_matrix.reduce((acc: number, v: any) => acc + (v.stock || 0), 0)
         : stock;
 
     const isOOS = totalStock === 0;
 
     const discount = compare_at_price && compare_at_price > displayOutPrice
         ? Math.round(((compare_at_price - displayOutPrice) / compare_at_price) * 100)
-        : 0;
+        : sale_percentage;
 
     const handleAddToCart = (e: React.MouseEvent) => {
         e.stopPropagation();
         if (isOOS) return;
+        
+        // If product has variants, must select one first - open QuickView instead
+        if (pricing_matrix && pricing_matrix.length > 0 && dynamic_attributes && Object.keys(dynamic_attributes).length > 0) {
+            if (onQuickView) {
+                onQuickView(product);
+                toast.show(`Please select a variant for ${name}`, 'info');
+                return;
+            }
+        }
+
         addItem(product);
-        onFly?.(e);
+        toast.show(`${name} added to cart!`, 'success');
+        if (onAddToCart) onAddToCart(product);
     };
 
     return (
@@ -76,29 +76,35 @@ export const ProductCard = (product: ProductCardProps) => {
             className={`group relative bg-white dark:bg-zinc-900/50 rounded-2xl md:rounded-[2rem] overflow-hidden border border-gray-100 dark:border-white/5 flex flex-col h-full cursor-pointer hover:shadow-[0_20px_40px_rgba(0,0,0,0.05)] transition-all duration-500 ${isOOS ? 'opacity-90' : ''}`}
         >
             {/* Image Container */}
-            <div className="relative aspect-[4/5] overflow-hidden bg-gray-50 dark:bg-zinc-800/20">
-                {/* Badges */}
-                <div className="absolute top-3 left-3 z-10 flex flex-col gap-2">
-                    {sale_percentage > 0 && (
-                        <div className="bg-primary text-white text-[10px] font-black px-2 py-1 rounded-lg shadow-lg uppercase italic">
-                            -{sale_percentage}% OFF
-                        </div>
-                    )}
-                    {is_free_delivery && (
-                        <div className="bg-green-500 text-white text-[10px] font-black px-2 py-1 rounded-lg shadow-lg uppercase italic">
-                            Free Delivery
-                        </div>
-                    )}
-                    {/* OOS Overlay - Kept for functionality */}
+            <div className="relative aspect-square overflow-hidden bg-gray-50 dark:bg-zinc-800/20">
+                
+                {/* Badges Overlay - Phase 2 Alignment */}
+                <div className="absolute top-2 right-2 flex flex-col items-end gap-1.5 z-10">
                     {isOOS && (
-                        <span className="px-3 py-1 bg-black text-white text-[8px] font-black uppercase tracking-[0.2em] rounded-full backdrop-blur-md">
+                        <div className="bg-red-500/90 backdrop-blur-md text-white text-[6px] md:text-[8px] font-black px-1 py-0.5 md:px-2 md:py-1 rounded-md uppercase italic shadow-lg shadow-red-500/20">
                             Sold Out
-                        </span>
+                        </div>
+                    )}
+                    {discount > 0 && !isOOS && (
+                        <div className="bg-primary/95 backdrop-blur-md text-white text-[6px] md:text-[8px] font-black px-1 py-0.5 md:px-2 md:py-1 rounded-md uppercase italic shadow-lg shadow-primary/20">
+                            -{discount}% OFF
+                        </div>
                     )}
                 </div>
-                {image && (
+
+                {/* Free Delivery Badge - Balanced on Left */}
+                {is_free_delivery && (
+                    <div className="absolute top-2 left-2 z-10 transition-transform group-hover:-translate-y-1">
+                        <div className="bg-green-500/95 backdrop-blur-sm text-white text-[6px] md:text-[9px] font-black px-1.5 py-0.5 md:px-2 md:py-1 rounded-md shadow-xl shadow-green-500/20 uppercase italic tracking-tighter flex items-center gap-1">
+                            <span className="w-1 h-1 bg-white rounded-full animate-pulse" />
+                            Free Delivery
+                        </div>
+                    </div>
+                )}
+
+                {finalImage && (
                     <img
-                        src={mainImageError ? PLACEHOLDER_IMAGE : image}
+                        src={mainImageError ? PLACEHOLDER_IMAGE : finalImage}
                         alt={name}
                         onError={() => setMainImageError(true)}
                         className={`w-full h-full object-cover transition-all duration-1000 scale-100 group-hover:scale-110 ${(image_urls?.length ?? 0) > 1 ? 'group-hover:opacity-0' : ''}`}
@@ -115,24 +121,26 @@ export const ProductCard = (product: ProductCardProps) => {
                     />
                 )}
 
-                {/* Badges Container */}
-                <div className="absolute top-3 left-3 flex flex-col gap-2 z-20">
-                    {/* OOS Overlay */}
-                    {isOOS && (
-                        <span className="px-3 py-1 bg-black text-white text-[8px] font-black uppercase tracking-[0.2em] rounded-full backdrop-blur-md">
-                            Sold Out
-                        </span>
+                {/* Quick Add Overlay & Quick View Button - Desktop Only */}
+                <div className="absolute inset-0 bg-black/10 opacity-0 group-hover:opacity-100 transition-opacity hidden md:flex items-center justify-center gap-2 z-20">
+                    {onQuickView && (
+                        <button
+                            onClick={(e) => { e.stopPropagation(); onQuickView(product); }}
+                            className="p-3 bg-white dark:bg-zinc-800 text-black dark:text-white rounded-full shadow-2xl hover:scale-110 active:scale-95 transition-all pointer-events-auto"
+                            title="Quick View"
+                        >
+                            <Search className="w-5 h-5" />
+                        </button>
                     )}
-                    {/* Discount Badge */}
-                    {discount > 0 && !isOOS && (
-                        <span className="px-3 py-1 bg-primary text-white text-[8px] font-black uppercase tracking-[0.2em] rounded-full shadow-lg">
-                            {discount}% OFF
-                        </span>
-                    )}
+                    <button
+                        onClick={handleAddToCart}
+                        disabled={isOOS}
+                        className={`p-3 rounded-full shadow-2xl transition-all pointer-events-auto ${isOOS ? 'bg-gray-200 text-gray-400 cursor-not-allowed' : 'bg-primary text-white hover:scale-110 active:scale-95'}`}
+                        title="Add to Cart"
+                    >
+                        <ShoppingCart className="w-5 h-5" />
+                    </button>
                 </div>
-
-                {/* Quick Add Overlay */}
-                <div className="absolute inset-0 bg-black/5 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
             </div>
 
             {/* Info Section */}
@@ -146,10 +154,9 @@ export const ProductCard = (product: ProductCardProps) => {
                     {/* Variant Swatches (Daraz-style) */}
                     {pricing_matrix && pricing_matrix.length > 0 && (
                         <div className="flex flex-wrap gap-1 mt-2">
-                            {pricing_matrix.slice(0, 5).map((v, i) => {
+                            {pricing_matrix.slice(0, 5).map((v: any, i: number) => {
                                 const combo = v.variant_combo || v.combination;
                                 if (!combo) return null;
-                                // Try to find a color value
                                 const colorVal = Object.entries(combo).find(([k]) => k.toLowerCase().includes('color') || k.toLowerCase().includes('colour'))?.[1];
                                 if (!colorVal && !v.image_url) return null;
 
@@ -174,13 +181,10 @@ export const ProductCard = (product: ProductCardProps) => {
                     )}
 
                     {avg_rating !== undefined && avg_rating > 0 && (
-                        <div className="flex items-center gap-1 mt-1 text-yellow-500">
-                            <Star className="w-3 h-3 fill-current" />
-                            <span className="text-[10px] font-bold text-gray-600 dark:text-gray-400">
-                                {avg_rating.toFixed(1)}
-                                {product.total_reviews !== undefined && product.total_reviews > 0 && (
-                                    <span className="ml-1 opacity-50">({product.total_reviews})</span>
-                                )}
+                        <div className="flex items-center gap-1 mt-1.5 bg-yellow-400/5 w-fit px-1 py-0.5 rounded-md border border-yellow-400/10 scale-90 origin-left">
+                            <Star className="w-2.5 h-2.5 fill-yellow-400 text-yellow-400" />
+                            <span className="text-[9px] font-black text-yellow-600 dark:text-yellow-400">
+                                {avg_rating.toFixed(1)} <span className="opacity-40">({total_reviews || 0})</span>
                             </span>
                         </div>
                     )}
@@ -205,7 +209,7 @@ export const ProductCard = (product: ProductCardProps) => {
                     <button
                         onClick={handleAddToCart}
                         disabled={isOOS}
-                        className={`p-2 md:p-2.5 rounded-xl transition-all active:scale-90 ${isOOS ? 'bg-gray-100 dark:bg-zinc-800 text-gray-300 dark:text-zinc-600' : 'bg-primary text-white shadow-lg shadow-primary/20 hover:scale-110'}`}
+                        className={`p-2 md:p-2.5 rounded-xl transition-all active:scale-90 hidden md:block ${isOOS ? 'bg-gray-100 dark:bg-zinc-800 text-gray-300 dark:text-zinc-600' : 'bg-primary text-white shadow-lg shadow-primary/20 hover:scale-110'}`}
                     >
                         <ShoppingCart className="w-4 h-4 shadow-sm" />
                     </button>

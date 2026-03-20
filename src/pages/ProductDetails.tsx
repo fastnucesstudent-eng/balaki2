@@ -74,7 +74,9 @@ export const ProductDetails = ({ productId, onBack, onFly }: { productId: number
     // Sync active variant data (price, stock, image) whenever selectedVariants change
     useEffect(() => {
         if (!product || !product.pricing_matrix || Object.keys(selectedVariants).length === 0) {
-            console.log("Variants Debug: Missing core data", { product: !!product, matrix: !!product?.pricing_matrix, selectionCount: Object.keys(selectedVariants).length });
+            if (product?.dynamic_attributes && Object.keys(product.dynamic_attributes).length > 0) {
+                console.log("Variants Debug: Missing core data", { product: !!product, matrix: !!product?.pricing_matrix, selectionCount: Object.keys(selectedVariants).length });
+            }
             setActiveVariantData(null);
             return;
         }
@@ -213,7 +215,7 @@ export const ProductDetails = ({ productId, onBack, onFly }: { productId: number
                     '@type': 'OfferShippingDetails',
                     shippingRate: {
                         '@type': 'MonetaryAmount',
-                        value: '200',
+                        value: product.is_free_delivery ? '0' : '200',
                         currency: 'PKR'
                     },
                     shippingDestination: {
@@ -413,7 +415,7 @@ export const ProductDetails = ({ productId, onBack, onFly }: { productId: number
                             onMouseMove={handleMouseMove}
                             onMouseEnter={() => setIsHoveringImage(true)}
                             onMouseLeave={() => setIsHoveringImage(false)}
-                            className="aspect-[4/5] glass rounded-[2.5rem] sm:rounded-[3.5rem] overflow-hidden relative group shadow-2xl bg-white dark:bg-[#0a0a0b] flex items-center justify-center p-6 border border-foreground/5 cursor-crosshair"
+                            className="aspect-square glass rounded-[2.5rem] sm:rounded-[3.5rem] overflow-hidden relative group shadow-2xl bg-white dark:bg-[#0a0a0b] flex items-center justify-center p-6 border border-foreground/5 cursor-crosshair"
                         >
                             {activeImage && (
                                 <img
@@ -480,9 +482,9 @@ export const ProductDetails = ({ productId, onBack, onFly }: { productId: number
                         <div className="space-y-4">
                             <div className="flex items-center gap-2">
                                 <span className="px-3 py-1 bg-primary/10 text-primary text-[10px] font-black uppercase tracking-widest rounded-full">{product.category}</span>
-                                <div className="flex items-center gap-1 text-yellow-500">
-                                    <Star className="w-4 h-4 fill-current" />
-                                    <span className="text-xs font-black text-foreground">{avgRating} ({totalReviewsCount} Reviews)</span>
+                                <div className="flex items-center gap-1 text-yellow-500 scale-90 sm:scale-100 origin-left">
+                                    <Star className="w-3.5 h-3.5 sm:w-4 sm:h-4 fill-current" />
+                                    <span className="text-[10px] sm:text-xs font-black text-foreground">{avgRating} ({totalReviewsCount} Reviews)</span>
                                 </div>
                             </div>
                             <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-5xl font-bold tracking-tight leading-tight">{product.name}</h1>
@@ -837,22 +839,14 @@ export const ProductDetails = ({ productId, onBack, onFly }: { productId: number
                         >
                             {productsLoading ? (
                                 [1, 2, 3, 4].map(i => (
-                                    <div key={i} className="flex-shrink-0 aspect-[3/4] animate-pulse bg-foreground/5 rounded-2xl" style={{ width: cardWidth }} />
+                                    <div key={i} className="flex-shrink-0 aspect-square animate-pulse bg-foreground/5 rounded-2xl" style={{ width: cardWidth }} />
                                 ))
                             ) : (
                                 suggestions.map(p => (
                                     <div key={p.id} className="flex-shrink-0" style={{ width: cardWidth }}>
                                         <ProductCard
-                                            id={p.id}
-                                            name={p.name}
-                                            price={p.price}
-                                            compare_at_price={p.compare_at_price}
-                                            image={p.image_url}
-                                            image_urls={p.image_urls}
-                                            category={p.category}
-                                            sku={p.sku}
-                                            stock={p.stock}
-                                            rating={p.avg_rating}
+                                            product={p}
+                                            onAddToCart={() => onFly({} as any)}
                                         />
                                     </div>
                                 ))

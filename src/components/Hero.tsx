@@ -89,7 +89,7 @@ export const Hero = () => {
                                     window.scrollBy({ top: window.innerHeight * 0.3, behavior: 'smooth' });
                                 }
                             }}
-                            className="w-full sm:w-auto px-8 md:px-10 py-3.5 md:py-5 bg-primary text-white rounded-full font-black text-sm md:text-lg hover:scale-105 transition-transform shadow-[0_15px_40px_rgba(8,_112,_184,_0.3)]"
+                            className="w-full sm:w-auto px-8 md:px-10 py-3.5 md:py-5 bg-black dark:bg-white text-white dark:text-black rounded-full font-black text-sm md:text-lg hover:scale-105 transition-transform shadow-[0_15px_40px_rgba(0,0,0,0.1)]"
                         >
                             Shop the Collection
                         </button>

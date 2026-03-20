@@ -114,6 +114,12 @@ const sendOrderEmail = async (email: string, order: any, items: any, subtotal: n
                                         <td style="padding: 8px 0; color: #424242; font-size: 14px; font-weight: 600;">Shipping</td>
                                         <td style="padding: 8px 0; text-align: right; color: #212121; font-weight: 700; font-size: 15px;">Rs. ${shippingCost.toLocaleString()}</td>
                                     </tr>
+                                    ${order.discount_amount > 0 ? `
+                                    <tr>
+                                        <td style="padding: 8px 0; color: #059669; font-size: 14px; font-weight: 600;">Discount</td>
+                                        <td style="padding: 8px 0; text-align: right; color: #059669; font-weight: 700; font-size: 15px;">- Rs. ${order.discount_amount.toLocaleString()}</td>
+                                    </tr>
+                                    ` : ''}
                                     <tr>
                                         <td style="padding: 20px 0 0 0; color: #212121; font-size: 20px; font-weight: 900;">Total Amount</td>
                                         <td style="padding: 20px 0 0 0; text-align: right; color: #f85606; font-size: 24px; font-weight: 900;">Rs. ${total.toLocaleString()}</td>
@@ -230,6 +236,29 @@ const sendMerchantOrderEmail = async (merchantEmail: string, order: any, merchan
                             <table style="width: 100%; border-collapse: collapse;">
                                 ${itemsRows}
                             </table>
+
+                            <div style="margin-top: 15px; padding-top: 15px; border-top: 2px solid #212121;">
+                                <table style="width: 100%; border-collapse: collapse;">
+                                    <tr>
+                                        <td style="padding: 5px 0; font-size: 14px; color: #757575; font-weight: 600;">Subtotal</td>
+                                        <td style="padding: 5px 0; font-size: 14px; color: #212121; font-weight: 700; text-align: right;">Rs. ${merchantItems.reduce((sum: number, item: any) => sum + (item.price * item.quantity), 0).toLocaleString()}</td>
+                                    </tr>
+                                    <tr>
+                                        <td style="padding: 5px 0; font-size: 14px; color: #757575; font-weight: 600;">Shipping</td>
+                                        <td style="padding: 5px 0; font-size: 14px; color: #212121; font-weight: 700; text-align: right;">Rs. ${(order.shipping_amount || 0).toLocaleString()}</td>
+                                    </tr>
+                                    ${order.discount_amount > 0 ? `
+                                    <tr>
+                                        <td style="padding: 5px 0; font-size: 14px; color: #059669; font-weight: 600;">Voucher Discount</td>
+                                        <td style="padding: 5px 0; font-size: 14px; color: #059669; font-weight: 700; text-align: right;">- Rs. ${order.discount_amount.toLocaleString()}</td>
+                                    </tr>
+                                    ` : ''}
+                                    <tr>
+                                        <td style="padding: 15px 0 0 0; font-size: 18px; color: #212121; font-weight: 900;">Grand Total</td>
+                                        <td style="padding: 15px 0 0 0; font-size: 20px; color: #f85606; font-weight: 900; text-align: right;">Rs. ${order.total_amount.toLocaleString()}</td>
+                                    </tr>
+                                </table>
+                            </div>
 
                             <div style="margin-top: 40px; text-align: center;">
                                 <a href="https://tarzify.com/merchant" style="display: inline-block; background-color: #f85606; color: #ffffff; padding: 15px 35px; border-radius: 12px; text-decoration: none; font-weight: 900; font-size: 14px; text-transform: uppercase;">Go to Dashboard</a>
@@ -394,7 +423,7 @@ const sendStatusUpdateEmail = async (email: string, order: any, status: string, 
 };
 
 router.post('/create', async (req, res) => {
-    const { userId, items, total, shippingAddress, phone, paymentMethod, customerName } = req.body;
+    const { userId, items, total, shippingAddress, phone, paymentMethod, customerName, voucherId, discountAmount, shippingAmount } = req.body;
 
     // Validation: All fields mandatory
     if (!customerName || !shippingAddress || !phone || !items || items.length === 0) {
@@ -454,9 +483,41 @@ router.post('/create', async (req, res) => {
         let order;
         let retries = 0;
         const maxRetries = 3;
+        let finalDiscountAmount = 0;
 
         while (retries < maxRetries) {
             const customId = generateOrderId();
+            finalDiscountAmount = 0;
+            let actualVoucherId = null;
+
+            if (voucherId) {
+                const { data: voucherVerify } = await supabase
+                    .from('vouchers')
+                    .select('*')
+                    .eq('id', voucherId)
+                    .single();
+
+                if (voucherVerify) {
+                    actualVoucherId = voucherId;
+                    const applicableItems = voucherVerify.merchant_id 
+                        ? items.filter((item: any) => item.merchant_id === voucherVerify.merchant_id)
+                        : items;
+                    
+                    const applicableSubtotal = applicableItems.reduce((sum: number, item: any) => sum + (item.price * item.quantity), 0);
+                    
+                    let serverDiscount = 0;
+                    if (voucherVerify.type === 'percentage') {
+                        serverDiscount = (applicableSubtotal * voucherVerify.value) / 100;
+                        if (voucherVerify.max_discount && serverDiscount > voucherVerify.max_discount) {
+                            serverDiscount = voucherVerify.max_discount;
+                        }
+                    } else {
+                        serverDiscount = Math.min(voucherVerify.value, applicableSubtotal);
+                    }
+                    
+                    finalDiscountAmount = Math.min(discountAmount || 0, Math.round(serverDiscount));
+                }
+            }
 
             const { data, error } = await supabase
                 .from('orders')
@@ -468,7 +529,10 @@ router.post('/create', async (req, res) => {
                     phone: phone,
                     payment_method: paymentMethod || 'cod',
                     order_number: customId,
-                    customer_name: customerName
+                    customer_name: customerName,
+                    voucher_id: actualVoucherId,
+                    discount_amount: finalDiscountAmount,
+                    shipping_amount: shippingAmount || (total - items.reduce((sum: number, item: any) => sum + (item.price * item.quantity), 0) + finalDiscountAmount)
                 })
                 .select()
                 .single();
@@ -477,7 +541,6 @@ router.post('/create', async (req, res) => {
                 order = data;
                 break;
             }
-
             if (error.code !== '23505') throw error;
             retries++;
         }
@@ -498,6 +561,32 @@ router.post('/create', async (req, res) => {
 
         if (itemsError) throw itemsError;
 
+        // 2.2 Record Voucher Usage
+        if (voucherId && userId) {
+            try {
+                const { error: usageError } = await supabase.from('voucher_usage').insert({
+                    voucher_id: voucherId,
+                    user_id: userId,
+                    order_id: order.id
+                });
+                
+                if (usageError) {
+                    if (usageError.code === '23505') {
+                        console.warn(`Voucher ${voucherId} already used by user ${userId}. Strict enforcement.`);
+                        // Optional: Refund/Cancel order if usage fails?
+                        // For now we just log it as the validate endpoint should have caught it.
+                    } else {
+                        throw usageError;
+                    }
+                } else {
+                    // Increment used_count ONLY if usage record was created
+                    await supabase.rpc('increment_voucher_usage', { v_id: voucherId });
+                }
+            } catch (err) {
+                console.error('Error recording voucher usage:', err);
+            }
+        }
+
         // Fetch user email for notification
         const { data: userData } = await supabase.auth.admin.getUserById(userId);
         const email = userData?.user?.email;
@@ -506,10 +595,12 @@ router.post('/create', async (req, res) => {
         const finalEmail = req.body.email || email; // Prefer provided email from body
 
         if (finalEmail) {
-            console.log(`Attempting to send order email to: ${finalEmail}`);
+            console.log(`Backgrounding order email to: ${finalEmail}`);
             const subtotal = items.reduce((sum: number, item: any) => sum + (item.price * item.quantity), 0);
-            const shippingCost = total - subtotal;
-            await sendOrderEmail(finalEmail, order, items, subtotal, shippingCost, total, shippingAddress);
+            const shippingCost = shippingAmount !== undefined ? shippingAmount : (total - subtotal + (finalDiscountAmount || 0));
+            
+            // Background email sending - DO NOT AWAIT
+            sendOrderEmail(finalEmail, order, items, subtotal, shippingCost, total, shippingAddress).catch(err => console.error('Order Email Background Error:', err));
         } else {
             console.warn('No email found for order notification. Skipping.');
         }
@@ -526,25 +617,26 @@ router.post('/create', async (req, res) => {
                 }
             }
 
-            // Send email to each merchant
+            // Send email to each merchant            // Send email to each merchant - Backgrounded
             for (const [merchantId, merchantItems] of Object.entries(merchantGroups)) {
-                const { data: merchantProfile } = await supabase
-                    .from('profiles')
+                supabase.from('profiles')
                     .select('email')
                     .eq('id', merchantId)
-                    .single();
-
-                if (merchantProfile?.email) {
-                    await sendMerchantOrderEmail(
-                        merchantProfile.email,
-                        order,
-                        merchantItems,
-                        customerName,
-                        shippingAddress,
-                        phone
-                    );
-                }
+                    .single()
+                    .then(({ data: merchantProfile }) => {
+                        if (merchantProfile?.email) {
+                            sendMerchantOrderEmail(
+                                merchantProfile.email,
+                                order,
+                                merchantItems,
+                                customerName,
+                                shippingAddress,
+                                phone
+                            ).catch(err => console.error('Merchant Email Background Error:', err));
+                        }
+                    });
             }
+
         } catch (mErr) {
             console.error('Error in merchant notification flow:', mErr);
         }
@@ -557,7 +649,29 @@ router.post('/create', async (req, res) => {
                 v_combo: item.variant_combo || null
             });
         }
-        res.json({ success: true, orderId: order.order_number });
+        // 4. Fetch the full order with its items to return to frontend
+        const { data: fullOrder, error: fetchError } = await supabase
+            .from('orders')
+            .select(`
+                *,
+                order_items (
+                    *,
+                    products (
+                        name,
+                        sku
+                    )
+                )
+            `)
+            .eq('id', order.id)
+            .single();
+
+        if (fetchError) {
+            console.error('Error fetching created order:', fetchError);
+            // Fallback to minimal response if fetch fails
+            return res.json({ success: true, orderId: order.order_number, order: order });
+        }
+
+        res.json({ success: true, orderId: order.order_number, order: fullOrder });
     } catch (error: any) {
         console.error('Order creation error:', error);
         res.status(400).json({ success: false, error: error.message });

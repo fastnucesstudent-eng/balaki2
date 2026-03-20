@@ -4,7 +4,7 @@ import {
     Package, Truck, BarChart3, Plus, X, Edit2,
     ShoppingBag, Menu,
     Loader2,
-    Clock, CheckCircle2, QrCode, Image as ImageIcon, Upload, Trash2, ExternalLink
+    Clock, CheckCircle2, QrCode, Image as ImageIcon, Upload, Trash2, ExternalLink, Settings
 } from 'lucide-react';
 import { useProducts } from '../hooks/useProducts';
 import { supabase } from '../lib/supabase';
@@ -24,7 +24,7 @@ declare global {
 
 // Mock QR Scanner
 const QRScannerPopup = ({ onScan, onClose }: { onScan: (data: string) => void, onClose: () => void }) => (
-    <div className="fixed inset-0 z-[200] flex items-center justify-center p-6 bg-black/80 backdrop-blur-md">
+    <div className="fixed inset-0 z-[200] flex items-center justify-center p-6 bg-black/80 backdrop-blur-md" data-lenis-prevent>
         <div className="bg-background w-full max-w-md rounded-[3rem] p-10 border border-border shadow-2xl space-y-8 text-center text-foreground">
             <div className="relative w-48 h-48 mx-auto">
                 <QrCode className="w-full h-full text-primary animate-pulse" />
@@ -80,6 +80,150 @@ export const MerchantDashboard = () => {
         end_at: '',
         slide_duration: 5000
     });
+
+    // New Voucher State
+    const [showVoucherForm, setShowVoucherForm] = useState(false);
+
+    useEffect(() => {
+        if (showVoucherForm) {
+            document.body.style.overflow = 'hidden';
+        } else {
+            document.body.style.overflow = 'unset';
+        }
+        return () => { document.body.style.overflow = 'unset'; };
+    }, [showVoucherForm]);
+    const [editingVoucherId, setEditingVoucherId] = useState<string | null>(null);
+    const [deletingVoucherId, setDeletingVoucherId] = useState<string | number | null>(null);
+    const [selectedVoucherStats, setSelectedVoucherStats] = useState<any[]>([]); 
+    const [newVoucher, setNewVoucher] = useState({
+        code: '',
+        type: 'percentage' as 'percentage' | 'fixed',
+        value: 0,
+        min_spend: 0,
+        expiry_date: '',
+        usage_limit: '' as any,
+        target_customer_id: null as string | null,
+        max_discount: '' as any,
+        per_user_limit: 1
+    });
+
+    const handleCreateVoucher = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setVouchersLoading(true);
+        try {
+            const res = await fetch(`${import.meta.env.VITE_API_URL}/vouchers/create`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    ...newVoucher,
+                    merchant_id: user?.id,
+                    usage_limit: newVoucher.usage_limit ? parseInt(newVoucher.usage_limit) : null,
+                    max_discount: newVoucher.max_discount ? parseFloat(newVoucher.max_discount) : null
+                })
+            });
+
+            if (!res.ok) {
+                const errorData = await res.json().catch(() => ({ error: 'Creation failed' }));
+                throw new Error(errorData.error || `Error ${res.status}`);
+            }
+
+            const data = await res.json();
+            if (data.success) {
+                toast.show('Voucher created successfully!', 'success');
+                setShowVoucherForm(false);
+                setNewVoucher({
+                    code: '',
+                    type: 'percentage',
+                    value: 0,
+                    min_spend: 0,
+                    expiry_date: '',
+                    usage_limit: '',
+                    target_customer_id: null,
+                    max_discount: '',
+                    per_user_limit: 1
+                });
+                fetchMerchantVouchers();
+            } else {
+                toast.show(data.error, 'error');
+            }
+        } catch (err: any) {
+            useToastStore.getState().show(err.message, 'error');
+        } finally {
+            setVouchersLoading(false);
+        }
+    };
+
+    const handleUpdateVoucher = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!editingVoucherId) return;
+        setVouchersLoading(true);
+        try {
+            const res = await fetch(`${import.meta.env.VITE_API_URL}/vouchers/${editingVoucherId}`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    ...newVoucher,
+                    usage_limit: newVoucher.usage_limit ? parseInt(newVoucher.usage_limit) : null,
+                    max_discount: newVoucher.max_discount ? parseFloat(newVoucher.max_discount) : null
+                })
+            });
+
+            if (!res.ok) {
+                const errorData = await res.json().catch(() => ({ error: 'Update failed' }));
+                throw new Error(errorData.error || `Error ${res.status}`);
+            }
+
+            const data = await res.json();
+            if (data.success) {
+                toast.show('Voucher Updated!', 'success');
+                setShowVoucherForm(false);
+                setEditingVoucherId(null);
+                setNewVoucher({
+                    code: '', type: 'percentage', value: 0, min_spend: 0, expiry_date: '',
+                    usage_limit: '', target_customer_id: null, max_discount: '', per_user_limit: 1
+                });
+                fetchMerchantVouchers();
+            }
+        } catch (err: any) {
+            toast.show(err.message, 'error');
+        } finally {
+            setVouchersLoading(false);
+        }
+    };
+
+    const handleDeleteVoucher = async (id: string | number) => {
+        try {
+            const res = await fetch(`${import.meta.env.VITE_API_URL}/vouchers/${id}`, {
+                method: 'DELETE'
+            });
+            if (res.ok) {
+                toast.show('Voucher deleted', 'success');
+                setMerchantVouchers(prev => prev.filter(v => v.id !== id));
+                setDeletingVoucherId(null); // Reset deleting state
+            } else {
+                const errorData = await res.json().catch(() => ({ error: 'Delete failed' }));
+                throw new Error(errorData.error || 'Failed to delete');
+            }
+        } catch (err: any) {
+            toast.show(err.message, 'error');
+        }
+    };
+
+    const handleToggleVoucher = async (v: any) => {
+        try {
+            const res = await fetch(`${import.meta.env.VITE_API_URL}/vouchers/${v.id}`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ is_active: !v.is_active })
+            });
+            if (res.ok) {
+                setMerchantVouchers(prev => prev.map(item => item.id === v.id ? { ...item, is_active: !v.is_active } : item));
+                toast.show(`Voucher ${v.is_active ? 'deactivated' : 'activated'}`, 'success');
+            }
+        } catch (err: any) {
+            toast.show(err.message, 'error');
+        }
+    };
 
     const fetchBanners = async () => {
         if (!user) return;
@@ -181,7 +325,42 @@ export const MerchantDashboard = () => {
 
     useEffect(() => {
         if (activeTab === 'banners') fetchBanners();
+        if (activeTab === 'vouchers') fetchMerchantVouchers();
     }, [activeTab]);
+
+    // Voucher Logic
+    const [merchantVouchers, setMerchantVouchers] = useState<any[]>([]);
+    const [vouchersLoading, setVouchersLoading] = useState(false);
+
+    const fetchMerchantVouchers = async () => {
+        if (!user) return;
+        setVouchersLoading(true);
+        try {
+            const { data, error } = await supabase
+                .from('vouchers')
+                .select('*')
+                .eq('merchant_id', user.id)
+                .order('created_at', { ascending: false });
+            if (error) throw error;
+            setMerchantVouchers(data || []);
+        } catch (error: any) {
+            toast.show(error.message, 'error');
+        } finally {
+            setVouchersLoading(false);
+        }
+    };
+
+    const fetchVoucherStats = async (voucherId: string) => {
+        try {
+            const res = await fetch(`${import.meta.env.VITE_API_URL}/vouchers/stats/${voucherId}`);
+            const data = await res.json();
+            if (data.success) {
+                setSelectedVoucherStats(data.usage);
+            }
+        } catch (err) {
+            console.error('Stats error:', err);
+        }
+    };
 
     // Carts State
     const [carts, setCarts] = useState<any[]>([]);
@@ -485,7 +664,7 @@ export const MerchantDashboard = () => {
             <AnimatePresence>
                 {/* Tracking Modal */}
                 {trackingData.orderId && (
-                    <div className="fixed inset-0 z-[200] flex items-center justify-center p-6 bg-black/80 backdrop-blur-md">
+                    <div className="fixed inset-0 z-[200] flex items-center justify-center p-6 bg-black/80 backdrop-blur-md" data-lenis-prevent>
                         <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="bg-background w-full max-w-lg rounded-[3rem] p-10 border border-border shadow-2xl space-y-8">
                             <div className="flex justify-between items-center">
                                 <h2 className="text-2xl font-black italic uppercase tracking-tighter">Assign Tracking</h2>
@@ -517,7 +696,7 @@ export const MerchantDashboard = () => {
 
                 {/* Bulk Discount Modal */}
                 {showBulkDiscount && (
-                    <div className="fixed inset-0 z-[200] flex items-center justify-center p-6 bg-black/80 backdrop-blur-md">
+                    <div className="fixed inset-0 z-[200] flex items-center justify-center p-6 bg-black/80 backdrop-blur-md" data-lenis-prevent>
                         <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="bg-background w-full max-w-lg rounded-[3rem] p-10 border border-border shadow-2xl space-y-8">
                             <div className="flex justify-between items-center">
                                 <div className="flex items-center gap-3">
@@ -577,15 +756,93 @@ export const MerchantDashboard = () => {
                         </motion.div>
                     </div>
                 )}
+
+                {showVoucherForm && (
+                    <div className="fixed inset-0 z-[200] flex items-center justify-center p-6 bg-black/80 backdrop-blur-md" data-lenis-prevent>
+                        <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="bg-background w-full max-w-lg rounded-[2.5rem] sm:rounded-[3rem] p-6 sm:p-10 border border-border shadow-2xl space-y-8 overflow-y-auto max-h-[90vh]">
+                            <div className="flex justify-between items-center">
+                                <h2 className="text-2xl font-black italic uppercase tracking-tighter">{editingVoucherId ? 'Edit Voucher' : 'Create Voucher'}</h2>
+                                <button onClick={() => { setShowVoucherForm(false); setEditingVoucherId(null); }} className="p-2 hover:bg-foreground/5 rounded-full"><X /></button>
+                            </div>
+                            <form onSubmit={editingVoucherId ? handleUpdateVoucher : handleCreateVoucher} className="space-y-6">
+                                <div className="space-y-2">
+                                    <label className="text-[10px] font-black uppercase opacity-30">Voucher Code</label>
+                                    <input required type="text" value={newVoucher.code} onChange={e => setNewVoucher({ ...newVoucher, code: e.target.value.toUpperCase() })} className="w-full glass border-none rounded-2xl p-4 font-black tracking-widest" placeholder="SAVE20..." />
+                                </div>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                    <div className="space-y-2">
+                                        <label className="text-[10px] font-black uppercase opacity-30">Type</label>
+                                        <select value={newVoucher.type} onChange={e => setNewVoucher({ ...newVoucher, type: e.target.value as any })} className="w-full glass border-none rounded-2xl p-4 bg-background">
+                                            <option value="percentage">Percentage (%)</option>
+                                            <option value="fixed">Fixed Amount</option>
+                                        </select>
+                                    </div>
+                                    <div className="space-y-2">
+                                        <label className="text-[10px] font-black uppercase opacity-30">Value</label>
+                                        <input required type="number" value={newVoucher.value} onChange={e => setNewVoucher({ ...newVoucher, value: parseFloat(e.target.value) })} className="w-full glass border-none rounded-2xl p-4 font-black" />
+                                    </div>
+                                </div>
+
+                                {newVoucher.type === 'percentage' && (
+                                    <div className="space-y-2">
+                                        <label className="text-[10px] font-black uppercase opacity-30">Max Discount (Cap)</label>
+                                        <input type="number" value={newVoucher.max_discount} onChange={e => setNewVoucher({ ...newVoucher, max_discount: e.target.value })} className="w-full glass border-none rounded-2xl p-4 font-black text-primary" placeholder="e.g. 500" />
+                                    </div>
+                                )}
+
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                    <div className="space-y-2">
+                                        <label className="text-[10px] font-black uppercase opacity-30">Min Spend</label>
+                                        <input type="number" value={newVoucher.min_spend} onChange={e => setNewVoucher({ ...newVoucher, min_spend: parseFloat(e.target.value) })} className="w-full glass border-none rounded-2xl p-4" />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <label className="text-[10px] font-black uppercase opacity-30">Usage Limit (Total)</label>
+                                        <input type="number" value={newVoucher.usage_limit} onChange={e => setNewVoucher({ ...newVoucher, usage_limit: e.target.value })} className="w-full glass border-none rounded-2xl p-4" placeholder="Unlimited" />
+                                    </div>
+                                </div>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                    <div className="space-y-2">
+                                        <label className="text-[10px] font-black uppercase opacity-30">Expiry Date</label>
+                                        <input type="date" value={newVoucher.expiry_date} onChange={e => setNewVoucher({ ...newVoucher, expiry_date: e.target.value })} className="w-full glass border-none rounded-2xl p-4 font-bold" />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <label className="text-[10px] font-black uppercase opacity-30">Limit Per User</label>
+                                        <input type="number" value={newVoucher.per_user_limit} onChange={e => setNewVoucher({ ...newVoucher, per_user_limit: parseInt(e.target.value) || 1 })} className="w-full glass border-none rounded-2xl p-4" />
+                                    </div>
+                                </div>
+                                <button type="submit" disabled={vouchersLoading} className="w-full py-5 bg-primary text-white rounded-3xl font-black uppercase italic tracking-tighter shadow-xl shadow-primary/20 flex items-center justify-center gap-2 hover:scale-[1.02] active:scale-[0.98] transition-all">
+                                    {vouchersLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : (editingVoucherId ? 'Save Changes' : 'Create & Activate')}
+                                </button>
+                            </form>
+                        </motion.div>
+                    </div>
+                )}
             </AnimatePresence>
+
+            {/* Mobile Sidebar Backdrop - tap to close */}
+            {showMobileMenu && (
+                <div
+                    className="fixed inset-0 z-[100] bg-black/60 backdrop-blur-sm lg:hidden"
+                    onClick={() => setShowMobileMenu(false)}
+                />
+            )}
 
             {/* Sidebar */}
             <div className={`fixed inset-y-0 left-0 z-[110] w-72 border-r border-foreground/10 p-8 flex flex-col gap-3 bg-background transition-transform duration-500 lg:translate-x-0 ${showMobileMenu ? 'translate-x-0' : '-translate-x-full'}`}>
-                <div className="flex items-center gap-3 mb-10 px-4">
-                    <ShoppingBag className="w-5 h-5 text-primary" />
-                    <h2 className="text-xl font-black tracking-tighter italic">
-                        {role === 'admin' ? 'ADMIN' : 'MERCHANT'}
-                    </h2>
+                <div className="flex items-center justify-between mb-10 px-4">
+                    <div className="flex items-center gap-3">
+                        <ShoppingBag className="w-5 h-5 text-primary" />
+                        <h2 className="text-xl font-black tracking-tighter italic">
+                            {role === 'admin' ? 'ADMIN' : 'MERCHANT'}
+                        </h2>
+                    </div>
+                    <button
+                        onClick={() => setShowMobileMenu(false)}
+                        className="lg:hidden p-2 rounded-full hover:bg-foreground/10 transition-colors"
+                        aria-label="Close menu"
+                    >
+                        <X className="w-5 h-5" />
+                    </button>
                 </div>
                 {[
                     { id: 'inventory', label: 'Inventory', icon: Package },
@@ -593,6 +850,7 @@ export const MerchantDashboard = () => {
                     { id: 'analytics', icon: BarChart3, label: 'Performance' },
                     { id: 'carts', icon: ShoppingBag, label: 'Customer Carts' },
                     { id: 'banners', icon: ImageIcon, label: 'Banners' },
+                    { id: 'vouchers', icon: Tag, label: 'Vouchers' },
                 ].map((tab) => (
                     <button key={tab.id} onClick={() => { setActiveTab(tab.id); setShowMobileMenu(false); }} className={`flex items-center gap-4 px-6 py-4 rounded-3xl transition-all ${activeTab === tab.id ? 'bg-primary text-white shadow-2xl hover:scale-105' : 'hover:bg-foreground/5 opacity-40 hover:opacity-100'}`}>
                         <tab.icon className="w-5 h-5" />
@@ -603,12 +861,12 @@ export const MerchantDashboard = () => {
 
             {/* Main Content */}
             <div className="flex-grow p-4 md:p-8 lg:p-12 overflow-y-auto w-full lg:ml-72">
-                <div className="flex justify-between items-center mb-12">
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6 mb-8 sm:mb-12">
                     <div className="flex items-center gap-4">
-                        <button onClick={() => setShowMobileMenu(true)} className="lg:hidden p-4 glass rounded-2xl">
-                            <Menu className="w-6 h-6" />
+                        <button onClick={() => setShowMobileMenu(true)} className="lg:hidden p-3 sm:p-4 glass rounded-xl sm:rounded-2xl">
+                            <Menu className="w-5 h-5 sm:w-6 sm:w-6" />
                         </button>
-                        <h1 className="text-4xl font-black italic uppercase tracking-tighter">
+                        <h1 className="text-3xl sm:text-4xl font-black italic uppercase tracking-tighter">
                             {activeTab === 'add-product' ? 'Add Item' : activeTab === 'edit-product' ? 'Edit Item' : 'Dashboard'}
                         </h1>
                     </div>
@@ -623,6 +881,9 @@ export const MerchantDashboard = () => {
                             </button>
                             <button onClick={() => setActiveTab('add-product')} className="bg-primary text-white p-4 px-8 rounded-2xl font-black italic uppercase tracking-tighter shadow-xl hover:scale-105 active:scale-95 transition-transform">Add Item</button>
                         </div>
+                    )}
+                    {activeTab === 'vouchers' && (
+                        <button onClick={() => { setEditingVoucherId(null); setShowVoucherForm(true); }} className="bg-primary text-white p-4 px-8 rounded-2xl font-black italic uppercase tracking-tighter shadow-xl hover:scale-105 active:scale-95 transition-transform">Create Voucher</button>
                     )}
                 </div>
 
@@ -695,64 +956,72 @@ export const MerchantDashboard = () => {
 
                 {activeTab === 'orders' && (
                     <div className="space-y-6">
-                        {filteredOrders.length === 0 ? <div className="text-center py-20 opacity-30 font-black uppercase tracking-widest italic">No orders found</div> : filteredOrders.map(order => (
-                            <div key={order.id} className="bg-card p-8 rounded-[3rem] border border-border flex flex-col md:flex-row items-center gap-10 shadow-lg group">
-                                <div className="flex-shrink-0 w-16 h-16 bg-primary/20 text-primary rounded-3xl flex items-center justify-center"><Package className="w-8 h-8" /></div>
-                                <div className="flex-grow">
-                                    <div className="flex items-center gap-3 mb-1">
-                                        <h4 className="text-xl font-black italic uppercase tracking-tighter">{order.customer_name || order.profiles?.full_name || 'Valued Customer'}</h4>
-                                        <span className="text-[10px] font-black uppercase tracking-widest bg-primary/10 text-primary px-3 py-1 rounded-full">{order.status}</span>
+                        {filteredOrders.length === 0 ? (
+                            <div className="text-center py-20 opacity-30 font-black uppercase tracking-widest italic">No orders found</div>
+                        ) : (
+                            filteredOrders.map(order => (
+                                <div key={order.id} className="bg-card p-6 sm:p-8 rounded-[2.5rem] sm:rounded-[3rem] border border-border flex flex-col lg:flex-row items-start lg:items-center gap-6 sm:gap-10 shadow-lg group">
+                                    <div className="flex-shrink-0 w-12 h-12 sm:w-16 sm:h-16 bg-primary/20 text-primary rounded-2xl sm:rounded-3xl flex items-center justify-center">
+                                        <Package className="w-6 h-6 sm:w-8 sm:h-8" />
                                     </div>
-                                    <p className="text-sm opacity-50 font-medium">#{order.order_number || order.id} • {new Date(order.created_at).toLocaleDateString()}</p>
-                                    <div className="mt-2 space-y-1.5">
-                                        {order.order_items?.map((item: any, i: number) => {
-                                            const combo = item.variant_combo || item.combination || {};
-                                            const variants = Object.entries(combo).length > 0
-                                                ? Object.entries(combo).map(([k, v]) => `${k}: ${v}`).join(', ')
-                                                : null;
-                                            return (
-                                                <div key={i} className="flex flex-col">
-                                                    <div className="text-sm font-black opacity-80 flex items-center gap-2">
-                                                        <span className="w-5 h-5 flex items-center justify-center bg-foreground/5 rounded-md text-[10px]">{item.quantity}x</span>
-                                                        {item.name || item.products?.name}
-                                                    </div>
-                                                    {variants && (
-                                                        <div className="ml-7 text-[10px] font-black uppercase text-primary tracking-wider mt-0.5">
-                                                            {variants}
+                                    <div className="flex-grow">
+                                        <div className="flex items-center gap-3 mb-1">
+                                            <h4 className="text-xl font-black italic uppercase tracking-tighter">{order.customer_name || order.profiles?.full_name || 'Valued Customer'}</h4>
+                                            <span className="text-[10px] font-black uppercase tracking-widest bg-primary/10 text-primary px-3 py-1 rounded-full">{order.status}</span>
+                                        </div>
+                                        <p className="text-sm opacity-50 font-medium">#{order.order_number || order.id} • {new Date(order.created_at).toLocaleDateString()}</p>
+                                        <div className="mt-2 space-y-1.5">
+                                            {order.order_items?.map((item: any, i: number) => {
+                                                const combo = item.variant_combo || item.combination || {};
+                                                const variants = Object.entries(combo).length > 0
+                                                    ? Object.entries(combo).map(([k, v]) => `${k}: ${v}`).join(', ')
+                                                    : null;
+                                                return (
+                                                    <div key={i} className="flex flex-col">
+                                                        <div className="text-sm font-black opacity-80 flex items-center gap-2">
+                                                            <span className="w-5 h-5 flex items-center justify-center bg-foreground/5 rounded-md text-[10px]">{item.quantity}x</span>
+                                                            {item.name || item.products?.name}
                                                         </div>
-                                                    )}
-                                                </div>
-                                            );
-                                        })}
+                                                        {variants && (
+                                                            <div className="ml-7 text-[10px] font-black uppercase text-primary tracking-wider mt-0.5">
+                                                                {variants}
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                        <p className="text-lg font-black text-primary mt-2">Rs. {Number(order.total_amount).toLocaleString()}</p>
                                     </div>
-                                    <p className="text-lg font-black text-primary mt-2">Rs. {Number(order.total_amount).toLocaleString()}</p>
-                                </div>
-                                <div className="flex gap-4">
-                                    <button onClick={() => handlePrintReceipt(order)} className="p-4 bg-primary text-white rounded-2xl font-black text-xs uppercase italic tracking-widest hover:scale-105 active:scale-95 transition-transform">Print</button>
-                                    <button onClick={() => setTrackingData({ ...trackingData, orderId: order.id })} className="p-4 bg-foreground/5 text-foreground rounded-2xl font-black text-xs uppercase italic tracking-widest border border-foreground/10 hover:bg-foreground/10 transition-colors">Tracking</button>
-                                    <div className="flex gap-2 bg-foreground/5 p-2 rounded-[2rem]">
-                                        {[
-                                            { id: 'pending', icon: Clock, color: 'bg-amber-500' },
-                                            { id: 'shipped', icon: Truck, color: 'bg-blue-500' },
-                                            { id: 'delivered', icon: CheckCircle2, color: 'bg-green-500' }
-                                        ].map(s => {
-                                            const Icon = s.icon;
-                                            const isActive = order.status === s.id;
-                                            return (
-                                                <button
-                                                    key={s.id}
-                                                    onClick={() => handleUpdateStatus(order.id, s.id)}
-                                                    className={`group relative flex items-center gap-2 p-3 px-6 rounded-2xl transition-all ${isActive ? `${s.color} text-white shadow-lg` : 'hover:bg-foreground/10 opacity-40 hover:opacity-100'}`}
-                                                >
-                                                    <Icon className="w-4 h-4" />
-                                                    <span className={`text-[10px] font-black uppercase tracking-tighter ${isActive ? 'block' : 'hidden group-hover:block'}`}>{s.id}</span>
-                                                </button>
-                                            );
-                                        })}
+                                    <div className="flex flex-col sm:flex-row lg:flex-col xl:flex-row gap-4 w-full lg:w-auto mt-4 lg:mt-0">
+                                        <div className="flex gap-2 w-full sm:w-auto">
+                                            <button onClick={() => handlePrintReceipt(order)} className="flex-1 sm:flex-none p-3 sm:p-4 bg-primary text-white rounded-xl sm:rounded-2xl font-black text-[10px] sm:text-xs uppercase italic tracking-widest hover:scale-105 active:scale-95 transition-transform">Print</button>
+                                            <button onClick={() => setTrackingData({ ...trackingData, orderId: order.id })} className="flex-1 sm:flex-none p-3 sm:p-4 bg-foreground/5 text-foreground rounded-xl sm:rounded-2xl font-black text-[10px] sm:text-xs uppercase italic tracking-widest border border-foreground/10 hover:bg-foreground/10 transition-colors text-center">Tracking</button>
+                                        </div>
+                                        <div className="flex gap-1 sm:gap-2 bg-foreground/5 p-1 sm:p-2 rounded-[1.5rem] sm:rounded-[2rem] w-full sm:w-auto overflow-x-auto no-scrollbar">
+                                            {[
+                                                { id: 'pending', icon: Clock, color: 'bg-amber-500' },
+                                                { id: 'shipped', icon: Truck, color: 'bg-blue-500' },
+                                                { id: 'delivered', icon: CheckCircle2, color: 'bg-green-500' }
+                                            ].map(s => {
+                                                const Icon = s.icon;
+                                                const isActive = order.status === s.id;
+                                                return (
+                                                    <button
+                                                        key={s.id}
+                                                        onClick={() => handleUpdateStatus(order.id, s.id)}
+                                                        className={`group relative flex items-center justify-center gap-2 p-3 sm:px-6 rounded-xl sm:rounded-2xl transition-all flex-1 sm:flex-none ${isActive ? `${s.color} text-white shadow-lg` : 'hover:bg-foreground/10 opacity-40 hover:opacity-100'}`}
+                                                    >
+                                                        <Icon className="w-4 h-4" />
+                                                        <span className={`text-[9px] sm:text-[10px] font-black uppercase tracking-tighter ${isActive ? 'block' : 'hidden group-hover:block sm:group-hover:block'}`}>{s.id}</span>
+                                                    </button>
+                                                );
+                                            })}
+                                        </div>
                                     </div>
                                 </div>
-                            </div>
-                        ))}
+                            ))
+                        )}
                     </div>
                 )}
 
@@ -849,6 +1118,153 @@ export const MerchantDashboard = () => {
                                 })}
                             </div>
                         )}
+                    </div>
+                )}
+                {activeTab === 'vouchers' && (
+                    <div className="space-y-8 sm:space-y-12">
+                        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center bg-foreground/5 p-6 sm:p-8 rounded-[2rem] sm:rounded-[2.5rem] border border-foreground/5 gap-6">
+                            <div className="max-w-md">
+                                <h3 className="text-2xl font-black italic uppercase tracking-tighter text-primary">Merchant Vouchers</h3>
+                                <p className="text-sm opacity-50">Create and manage vouchers specific to your store's products.</p>
+                            </div>
+                            <button 
+                                onClick={() => { setEditingVoucherId(null); setShowVoucherForm(true); }} 
+                                className="w-full sm:w-auto bg-primary text-white p-4 px-8 rounded-2xl font-black italic uppercase tracking-tighter shadow-xl hover:scale-105 active:scale-95 transition-transform text-center"
+                            >
+                                Create New Voucher
+                            </button>
+                        </div>
+                         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8">
+                            {merchantVouchers.map(v => {
+                                const isExpired = v.expiry_date && new Date(v.expiry_date) < new Date();
+                                const isLimitReached = v.usage_limit && v.used_count >= v.usage_limit;
+                                return (
+                                    <div key={v.id} className="bg-card p-6 sm:p-10 rounded-[2.5rem] sm:rounded-[3rem] border border-border space-y-6 sm:space-y-8 relative overflow-hidden group shadow-xl">                                        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                                            <div>
+                                                <p className="text-[10px] font-black uppercase opacity-30 mb-1">Coupon Code</p>
+                                                <h3 className="text-3xl sm:text-4xl font-black italic uppercase tracking-tighter text-primary">{v.code}</h3>
+                                                <p className="text-[8px] font-bold uppercase opacity-30 mt-1 italic">Merchant Store Voucher</p>
+                                            </div>
+                                            <div className="flex gap-2">
+                                                <button 
+                                                    onClick={() => {
+                                                        setEditingVoucherId(v.id);
+                                                        setNewVoucher({
+                                                            code: v.code,
+                                                            type: v.type,
+                                                            value: v.value,
+                                                            min_spend: v.min_spend || 0,
+                                                            expiry_date: v.expiry_date ? v.expiry_date.split('T')[0] : '',
+                                                            usage_limit: v.usage_limit || '',
+                                                            target_customer_id: v.target_customer_id,
+                                                            max_discount: v.max_discount || '',
+                                                            per_user_limit: v.per_user_limit || 1
+                                                        });
+                                                        setShowVoucherForm(true);
+                                                    }} 
+                                                    className="p-3 bg-primary/10 text-primary rounded-2xl hover:bg-primary hover:text-white transition-all"
+                                                    title="Edit Voucher"
+                                                >
+                                                    <Edit2 className="w-4 h-4" />
+                                                </button>
+                                                {deletingVoucherId === v.id ? (
+                                                    <div className="flex items-center gap-1">
+                                                        <button 
+                                                            onClick={(e) => { e.stopPropagation(); handleDeleteVoucher(v.id); }} 
+                                                            className="px-3 py-1 bg-red-500 text-white text-[10px] font-black rounded-lg hover:bg-red-600 transition-all uppercase italic"
+                                                        >
+                                                            Confirm
+                                                        </button>
+                                                        <button 
+                                                            onClick={(e) => { e.stopPropagation(); setDeletingVoucherId(null); }} 
+                                                            className="px-3 py-1 glass text-[10px] font-black rounded-lg hover:bg-white/10 transition-all uppercase italic"
+                                                        >
+                                                            Cancel
+                                                        </button>
+                                                    </div>
+                                                ) : (
+                                                    <>
+                                                        <button onClick={() => handleToggleVoucher(v)} className={`p-2 rounded-xl border border-white/5 transition-colors ${v.is_active ? 'text-green-500 hover:bg-green-500/10' : 'text-zinc-500 hover:bg-zinc-500/10'}`} title="Toggle Active">
+                                                            <Settings className="w-4 h-4" />
+                                                        </button>
+                                                        <button 
+                                                            onClick={(e) => { e.stopPropagation(); setDeletingVoucherId(v.id); }} 
+                                                            className="p-2 text-red-500 hover:bg-red-500/10 rounded-xl border border-white/5 transition-colors" 
+                                                            title="Delete"
+                                                        >
+                                                            <Trash2 className="w-4 h-4" />
+                                                        </button>
+                                                    </>
+                                                )}
+                                            </div>
+                                        </div>
+
+                                        <div className={`px-4 py-1.5 rounded-full inline-block font-black text-[10px] uppercase tracking-widest ${v.is_active && !isExpired && !isLimitReached ? 'bg-green-500/10 text-green-500' : 'bg-red-500/10 text-red-500'}`}>
+                                            {isExpired ? 'Expired' : isLimitReached ? 'Limit Reached' : v.is_active ? 'Active' : 'Inactive'}
+                                        </div>
+
+                                        <div className="grid grid-cols-2 gap-6 pt-6 border-t border-foreground/5">
+                                            <div>
+                                                <p className="text-[10px] font-black uppercase opacity-30">Benefit</p>
+                                                <p className="text-2xl font-black">{v.type === 'percentage' ? `${v.value}%` : `Rs. ${v.value}`}</p>
+                                                {v.max_discount && <p className="text-[10px] font-black text-primary italic mt-1 uppercase">Max Rs. {v.max_discount}</p>}
+                                            </div>
+                                            <div>
+                                                <p className="text-[10px] font-black uppercase opacity-30">Volume</p>
+                                                <p className="text-2xl font-black">{v.used_count} / {v.usage_limit || '∞'}</p>
+                                                <p className="text-[10px] font-black opacity-30 mt-1 uppercase tracking-tighter">Per User Limit: {v.per_user_limit || 1}</p>
+                                            </div>
+                                        </div>
+                                        <div className="pt-6 border-t border-foreground/5 space-y-3">
+                                            <div className="flex justify-between items-center text-[11px] font-black uppercase tracking-widest opacity-40">
+                                                <span>Minimum Order</span>
+                                                <span>Rs. {v.min_spend}</span>
+                                            </div>
+                                            {v.expiry_date && (
+                                                <div className="flex justify-between items-center text-[11px] font-black uppercase tracking-widest opacity-40">
+                                                    <span>Valid Until</span>
+                                                    <span>{new Date(v.expiry_date).toLocaleDateString()}</span>
+                                                </div>
+                                            )}
+                                        </div>
+                                        <button 
+                                            onClick={() => fetchVoucherStats(v.id)}
+                                            className="w-full py-5 bg-foreground/5 rounded-3xl font-black text-xs uppercase tracking-widest hover:bg-foreground/10 transition-all border border-foreground/5"
+                                        >
+                                            View Usage Analytics
+                                        </button>
+                                    </div>
+                                );
+                            })}
+                         </div>
+
+                         {selectedVoucherStats.length > 0 && (
+                              <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="bg-card p-6 sm:p-10 rounded-[2.5rem] sm:rounded-[3rem] border border-border space-y-8">
+                                 <div className="flex justify-between items-center">
+                                     <h3 className="text-2xl font-black italic uppercase tracking-tighter italic">Persons who availed</h3>
+                                     <button onClick={() => setSelectedVoucherStats([])} className="text-xs font-black uppercase tracking-widest text-primary">Close List</button>
+                                 </div>
+                                 <div className="space-y-4">
+                                     {selectedVoucherStats.map((u, i) => (
+                                         <div key={i} className="flex flex-col sm:flex-row justify-between items-start sm:items-center p-6 bg-foreground/5 rounded-[2rem] border border-foreground/5 gap-4">
+                                             <div className="flex items-center gap-4">
+                                                 <div className="w-10 h-10 bg-primary/20 text-primary rounded-xl flex items-center justify-center font-black">
+                                                     {u.profiles?.full_name?.[0] || 'U'}
+                                                 </div>
+                                                 <div>
+                                                     <p className="font-black">{u.profiles?.full_name || 'Customer'}</p>
+                                                     <p className="text-[10px] opacity-50 font-medium">{u.profiles?.email}</p>
+                                                 </div>
+                                             </div>
+                                             <div className="text-right">
+                                                 <p className="text-sm font-black text-primary">Order #{u.orders?.order_number || u.order_id}</p>
+                                                 <p className="text-[10px] opacity-30 font-bold uppercase">{new Date(u.used_at).toLocaleDateString()}</p>
+                                             </div>
+                                         </div>
+                                     ))}
+                                 </div>
+                              </motion.div>
+                         )}
                     </div>
                 )}
 

@@ -10,27 +10,36 @@ export const TrackOrder = ({ onClose, initialOrderId }: { onClose: () => void, i
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
 
-    const handleTrack = async (e: React.FormEvent) => {
-        e.preventDefault();
+    // Auto-sync state when initialOrderId changes (e.g. from URL)
+    useEffect(() => {
+        if (initialOrderId) setOrderId(initialOrderId);
+    }, [initialOrderId]);
+
+    const handleTrack = async (e?: React.FormEvent) => {
+        if (e) e.preventDefault();
+        if (!orderId.trim()) return;
+
         setLoading(true);
         setError('');
         setStatus(null);
 
         try {
-            // Ensure ID is alphanumeric (for new format)
             const id = orderId.trim().toUpperCase();
-            if (!id) throw new Error("Invalid Order ID");
-
-            const { data, error } = await supabase
-                .from('orders')
-                .select('*, order_items(*, products(*))')
-                .eq('order_number', id)
-                .single();
+            
+            // Use secure RPC for guest tracking
+            const { data, error } = await supabase.rpc('get_order_status', { 
+                p_order_number: id 
+            });
 
             if (error) throw error;
-            setStatus(data);
+            if (!data) {
+                setError('Order not found. Please check your ID.');
+            } else {
+                setStatus(data);
+            }
         } catch (err: any) {
-            setError('Order not found. Please check your ID.');
+            console.error('Tracking Error:', err);
+            setError('Could not retrieve order. Please try again later.');
         } finally {
             setLoading(false);
         }
@@ -47,8 +56,7 @@ export const TrackOrder = ({ onClose, initialOrderId }: { onClose: () => void, i
     useEffect(() => {
         if (initialOrderId) {
             const timer = setTimeout(() => {
-                const mockEvent = { preventDefault: () => { } } as React.FormEvent;
-                handleTrack(mockEvent);
+                handleTrack();
             }, 500);
             return () => clearTimeout(timer);
         }
@@ -61,58 +69,61 @@ export const TrackOrder = ({ onClose, initialOrderId }: { onClose: () => void, i
 
     return createPortal(
         <div
-            className="fixed inset-0 bg-black/80 backdrop-blur-md z-[200] overflow-y-auto overscroll-contain track-order-portal"
+            className="fixed inset-0 bg-black/90 backdrop-blur-xl z-[200] overflow-y-auto overscroll-contain track-order-portal"
             data-lenis-prevent
             onWheel={(e) => e.stopPropagation()}
         >
-            <div className="min-h-screen w-full flex items-center justify-center p-6 py-12">
+            <div className="min-h-screen w-full flex items-center justify-center p-4 sm:p-6 py-12">
                 <motion.div
-                    initial={{ opacity: 0, scale: 0.9 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    className="w-full max-w-2xl bg-background border border-white/10 rounded-[3rem] p-10 shadow-2xl relative"
+                    initial={{ opacity: 0, scale: 0.95, y: 20 }}
+                    animate={{ opacity: 1, scale: 1, y: 0 }}
+                    className="w-full max-w-2xl bg-[#09090b] border border-white/10 rounded-[2rem] sm:rounded-[3rem] p-6 sm:p-10 shadow-2xl relative"
                 >
-                    <button onClick={onClose} className="absolute top-6 right-6 p-2 rounded-full hover:bg-foreground/5 bg-foreground/5">
-                        <X className="w-6 h-6" />
+                    <button 
+                        onClick={onClose} 
+                        className="absolute top-4 right-4 sm:top-6 sm:right-6 p-2 rounded-full hover:bg-white/10 bg-white/5 transition-colors z-10"
+                    >
+                        <X className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
                     </button>
 
-                    <div className="text-center mb-10 flex flex-col items-center">
-                        <img src="/logo.png" alt="TARZIFY Logo" className="w-16 h-16 rounded-full object-cover border-2 border-primary/30 shadow-2xl mb-4" />
-                        <h2 className="text-4xl font-black italic tracking-tighter mb-4">TRACK YOUR ORDER</h2>
-                        <p className="opacity-60">Enter your Order ID (e.g., AB123456) to see live status.</p>
+                    <div className="text-center mb-8 sm:mb-10 flex flex-col items-center">
+                        <img src="/logo.png" alt="TARZIFY Logo" className="w-12 h-12 sm:w-16 sm:h-16 rounded-full object-cover border-2 border-primary/30 shadow-2xl mb-4" />
+                        <h2 className="text-3xl sm:text-4xl font-black italic tracking-tighter mb-3 uppercase text-white">TRACK YOUR ORDER</h2>
+                        <p className="text-xs sm:text-sm opacity-50 text-white font-medium max-w-xs sm:max-w-none">Enter your Order ID (e.g., BS123456) to see live status.</p>
                     </div>
 
-                    <form onSubmit={handleTrack} className="flex gap-4 mb-12">
+                    <form onSubmit={handleTrack} className="flex flex-col sm:flex-row gap-3 sm:gap-4 mb-10">
                         <div className="flex-grow relative">
-                            <Search className="absolute left-6 top-1/2 -translate-y-1/2 opacity-30" />
+                            <Search className="absolute left-5 top-1/2 -translate-y-1/2 text-primary w-5 h-5 opacity-50" />
                             <input
                                 type="text"
                                 value={orderId}
                                 onChange={(e) => setOrderId(e.target.value)}
-                                placeholder="Enter Order ID..."
-                                className="w-full bg-foreground/5 border-none rounded-2xl py-5 pl-14 pr-6 text-lg font-bold outline-none focus:ring-2 ring-primary/50"
+                                placeholder="Order ID (e.g. BS123456)"
+                                className="w-full bg-white/5 border border-white/10 rounded-2xl py-4 pl-12 pr-6 text-base font-bold outline-none focus:ring-2 ring-primary/50 text-white placeholder:text-white/20 transition-all"
                             />
                         </div>
-                        <button disabled={loading} className="px-8 bg-primary text-white rounded-2xl font-black tracking-widest hover:scale-105 transition-transform disabled:opacity-50">
+                        <button disabled={loading} className="px-8 py-4 bg-primary text-white rounded-2xl font-black tracking-widest hover:scale-[1.02] active:scale-95 transition-all disabled:opacity-50 text-xs sm:text-sm shadow-lg shadow-primary/20">
                             {loading ? 'TRACKING...' : 'TRACK'}
                         </button>
                     </form>
 
                     {error && (
-                        <div className="p-4 bg-red-500/10 text-red-500 rounded-xl text-center font-bold mb-8">
+                        <div className="p-4 bg-red-500/10 border border-red-500/20 text-red-500 rounded-xl text-center text-xs font-black uppercase tracking-widest mb-8">
                             {error}
                         </div>
                     )}
 
                     {status && (
                         <div className="space-y-8">
-                            <div className="flex justify-between items-center pb-8 border-b border-white/5">
+                            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 pb-8 border-b border-white/5">
                                 <div>
-                                    <h3 className="text-sm font-black opacity-40 uppercase tracking-widest mb-1">Order ID</h3>
-                                    <p className="text-2xl font-black text-primary">#{status.order_number}</p>
+                                    <h3 className="text-[10px] font-black opacity-40 uppercase tracking-widest mb-1 text-white">Order ID</h3>
+                                    <p className="text-xl sm:text-2xl font-black text-primary">#{status.order_number}</p>
                                 </div>
-                                <div className="text-right">
-                                    <h3 className="text-sm font-black opacity-40 uppercase tracking-widest mb-1">Total</h3>
-                                    <p className="text-2xl font-black">Rs. {status.total_amount.toLocaleString()}</p>
+                                <div className="text-left sm:text-right">
+                                    <h3 className="text-[10px] font-black opacity-40 uppercase tracking-widest mb-1 text-white">Total Amount</h3>
+                                    <p className="text-xl sm:text-2xl font-black text-white">Rs. {status.total_amount.toLocaleString()}</p>
                                 </div>
                             </div>
 
@@ -125,25 +136,27 @@ export const TrackOrder = ({ onClose, initialOrderId }: { onClose: () => void, i
                                     style={{ width: `${(getStatusStep(status.status) / 3) * 100}%` }}
                                 />
 
-                                {[
-                                    { label: 'Pending', icon: Clock },
-                                    { label: 'Processing', icon: Package },
-                                    { label: 'Shipped', icon: Truck },
-                                    { label: 'Delivered', icon: CheckCircle }
-                                ].map((step, index) => {
-                                    const isActive = index <= getStatusStep(status.status);
-                                    const isCurrent = index === getStatusStep(status.status);
-                                    const Icon = step.icon;
+                                {
+                                    [
+                                        { label: 'Pending', icon: Clock },
+                                        { label: 'Processing', icon: Package },
+                                        { label: 'Shipped', icon: Truck },
+                                        { label: 'Delivered', icon: CheckCircle }
+                                    ].map((step, index) => {
+                                        const isActive = index <= getStatusStep(status.status);
+                                        const isCurrent = index === getStatusStep(status.status);
+                                        const Icon = step.icon;
 
-                                    return (
-                                        <div key={step.label} className="flex flex-col items-center gap-4 bg-background px-2">
-                                            <div className={`w-12 h-12 rounded-full flex items-center justify-center transition-all duration-500 ${isActive ? 'bg-primary text-white shadow-lg shadow-primary/30' : 'bg-foreground/10 opacity-30'} ${isCurrent ? 'animate-pulse ring-4 ring-primary/20' : ''}`}>
-                                                <Icon className="w-5 h-5" />
+                                        return (
+                                            <div key={step.label} className="flex flex-col items-center gap-2 sm:gap-4 bg-[#09090b] px-1 sm:px-2 relative z-10">
+                                                <div className={`w-10 h-10 sm:w-12 sm:h-12 rounded-full flex items-center justify-center transition-all duration-500 ${isActive ? 'bg-primary text-white shadow-lg shadow-primary/30' : 'bg-white/10 opacity-30'} ${isCurrent ? 'animate-pulse ring-4 ring-primary/20 scale-110' : ''}`}>
+                                                    <Icon className="w-4 h-4 sm:w-5 sm:h-5" />
+                                                </div>
+                                                <span className={`text-[8px] sm:text-[10px] font-black uppercase tracking-widest text-center ${isActive ? 'opacity-100 text-primary' : 'opacity-30 text-white'}`}>{step.label}</span>
                                             </div>
-                                            <span className={`text-xs font-black uppercase tracking-widest ${isActive ? 'opacity-100' : 'opacity-30'}`}>{step.label}</span>
-                                        </div>
-                                    );
-                                })}
+                                        );
+                                    })
+                                }
                             </div>
 
                             {/* Items List (NEW) */}

@@ -30,6 +30,7 @@ export const CartDrawer = ({ isOpen, onClose }: CartDrawerProps) => {
                         exit={{ x: '100%' }}
                         transition={{ type: 'spring', damping: 25, stiffness: 200 }}
                         className="fixed right-0 top-0 h-full w-full max-w-md bg-background z-[70] shadow-2xl border-l border-white/10 flex flex-col"
+                        data-lenis-prevent
                     >
                         <div className="p-6 border-b border-foreground/5 flex items-center justify-between">
                             <div className="flex items-center gap-2">

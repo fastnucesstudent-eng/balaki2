@@ -4,6 +4,7 @@ import { ChevronRight, CreditCard, Truck, MapPin, CheckCircle2, Loader2, ArrowLe
 import { useCartStore } from '../stores/useCartStore';
 import { useAuthStore } from '../stores/useAuthStore';
 import { useToastStore } from '../stores/useToastStore';
+import { useProductStore } from '../stores/useProductStore';
 
 const STEPS = ['Shipping', 'Delivery', 'Payment'];
 
@@ -24,6 +25,7 @@ export const CheckoutPage = ({ onBack }: { onBack: () => void }) => {
     const [ratesError, setRatesError] = useState('');
     const [createdOrderId, setCreatedOrderId] = useState<string | null>(null);
     const [step0Error, setStep0Error] = useState('');
+    const { products } = useProductStore();
 
     const [formData, setFormData] = useState({
         fullName: user?.user_metadata?.full_name || '',
@@ -34,20 +36,48 @@ export const CheckoutPage = ({ onBack }: { onBack: () => void }) => {
         shippingMethod: '', // Will be set once rates load
         paymentMethod: 'fastpay'
     });
-
+    const [voucherCode, setVoucherCode] = useState('');
+    const [appliedVoucher, setAppliedVoucher] = useState<any>(null);
+    const [voucherLoading, setVoucherLoading] = useState(false);
+    const [voucherError, setVoucherError] = useState('');
     useEffect(() => {
         const fetchRates = async () => {
+            if (items.length === 0) {
+                setShippingRates([]);
+                return;
+            }
+            if (products.length === 0) return;
+            
             try {
+                const enrichedItems = items.map(item => {
+                    const fullProduct = products.find(p => Number(p.id) === Number(item.id));
+                    // Check local item flag, then DB flag, handle any type (string/boolean)
+                    const isFree = (item.is_free_delivery == true || fullProduct?.is_free_delivery == true);
+                    
+                    return {
+                        ...item,
+                        merchant_id: item.merchant_id || fullProduct?.merchant_id,
+                        is_free_delivery: !!isFree
+                    };
+                });
+
+                console.log('--- SHIPPING DEBUG ---');
+                console.log('Items sent to API:', JSON.stringify(enrichedItems, null, 2));
+
                 const res = await fetch(`${import.meta.env.VITE_API_URL}/shipping/calculate`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({}) // Send basic payload for now
+                    body: JSON.stringify({ items: enrichedItems })
                 });
                 const data = await res.json();
+                console.log('API Response:', data);
+                
                 if (data.success && data.rates.length > 0) {
                     setShippingRates(data.rates);
                     // Default to first option if not set
-                    setFormData(prev => ({ ...prev, shippingMethod: data.rates[0].id }));
+                    if (!formData.shippingMethod) {
+                        setFormData(prev => ({ ...prev, shippingMethod: data.rates[0].id }));
+                    }
                 } else {
                     setRatesError('Failed to load shipping rates.');
                 }
@@ -57,7 +87,7 @@ export const CheckoutPage = ({ onBack }: { onBack: () => void }) => {
             }
         };
         fetchRates();
-    }, []);
+    }, [items, products]);
 
     // Auto-redirect to tracking after 5 seconds
     useEffect(() => {
@@ -71,10 +101,85 @@ export const CheckoutPage = ({ onBack }: { onBack: () => void }) => {
 
     const selectedRate = shippingRates.find(r => r.id === formData.shippingMethod) || shippingRates[0];
     
-    // Check if any item in the cart qualifies for free delivery
-    const hasFreeDeliveryItem = items.some(item => (item as any).is_free_delivery);
-    const shippingCost = hasFreeDeliveryItem ? 0 : (selectedRate ? selectedRate.price : 0);
-    const finalTotal = total + shippingCost;
+    // Shipping cost is now calculated dynamically by the backend per merchant/item
+    const shippingCost = selectedRate ? selectedRate.price : 0;
+    const discountAmount = appliedVoucher?.discount || 0;
+    const finalTotal = Math.max(0, total - discountAmount) + shippingCost;
+
+    // Re-validate voucher whenever items change
+    useEffect(() => {
+        if (appliedVoucher && items.length > 0) {
+            const revalidateVoucher = async () => {
+                try {
+                    const enrichedItems = items.map(item => {
+                        const fullProduct = products.find(p => Number(p.id) === Number(item.id));
+                        return { ...item, merchant_id: item.merchant_id || fullProduct?.merchant_id };
+                    });
+
+                    const res = await fetch(`${import.meta.env.VITE_API_URL}/vouchers/validate`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            code: appliedVoucher.code,
+                            userId: user?.id,
+                            items: enrichedItems
+                        })
+                    });
+                    const data = await res.json();
+                    if (data.success) {
+                        setAppliedVoucher(data.voucher);
+                    } else {
+                        setAppliedVoucher(null);
+                        setVoucherError(data.error || 'Voucher requirement no longer met');
+                        useToastStore.getState().show(data.error || 'Voucher requirement no longer met', 'error');
+                    }
+                } catch (err) {
+                    console.error('Re-validation error:', err);
+                }
+            };
+            revalidateVoucher();
+        } else if (items.length === 0 && appliedVoucher) {
+            setAppliedVoucher(null);
+        }
+    }, [items, total]);
+
+    const handleApplyVoucher = async () => {
+        if (!voucherCode.trim()) return;
+        setVoucherLoading(true);
+        setVoucherError('');
+        try {
+            // Enrich items with merchant_id for scoping
+            const enrichedItems = items.map(item => {
+                const fullProduct = products.find(p => Number(p.id) === Number(item.id));
+                return {
+                    ...item,
+                    merchant_id: item.merchant_id || fullProduct?.merchant_id
+                };
+            });
+
+            const res = await fetch(`${import.meta.env.VITE_API_URL}/vouchers/validate`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    code: voucherCode.trim(),
+                    userId: user?.id,
+                    items: enrichedItems
+                })
+            });
+            const data = await res.json();
+            if (data.success) {
+                setAppliedVoucher(data.voucher);
+                useToastStore.getState().show(`Voucher ${data.voucher.code} applied!`, 'success');
+            } else {
+                setVoucherError(data.error || 'Invalid voucher');
+                useToastStore.getState().show(data.error || 'Invalid voucher', 'error');
+            }
+        } catch (err) {
+            setVoucherError('Failed to validate voucher');
+        } finally {
+            setVoucherLoading(false);
+        }
+    };
 
     const handleNext = () => {
         // Step 0: validate phone + address before advancing
@@ -116,20 +221,27 @@ export const CheckoutPage = ({ onBack }: { onBack: () => void }) => {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     userId: user.id,
-                    items: items.map(item => ({
-                        id: item.id,
-                        name: item.name,
-                        quantity: item.quantity,
-                        price: item.price,
-                        image: item.image,
-                        variant_combo: item.variant_combo
-                    })),
+                    items: items.map(item => {
+                        const fullProduct = products.find(p => Number(p.id) === Number(item.id));
+                        return {
+                            id: item.id,
+                            name: item.name,
+                            quantity: item.quantity,
+                            price: item.price,
+                            image: item.image,
+                            variant_combo: item.variant_combo,
+                            merchant_id: item.merchant_id || fullProduct?.merchant_id
+                        };
+                    }),
                     total: finalTotal,
                     shippingAddress: `${formData.address}, ${formData.city}`,
                     phone: formData.phone,
                     paymentMethod: formData.paymentMethod,
                     customerName: formData.fullName,
-                    email: formData.email
+                    email: formData.email,
+                    voucherId: appliedVoucher?.id,
+                    discountAmount: appliedVoucher?.discount || 0,
+                    shippingAmount: shippingCost
                 })
             });
 
@@ -232,7 +344,10 @@ export const CheckoutPage = ({ onBack }: { onBack: () => void }) => {
                         <button onClick={onBack} className="p-1.5 sm:p-2 hover:bg-foreground/5 rounded-full transition-colors">
                             <ArrowLeft className="w-4 h-4 sm:w-5 sm:h-5" />
                         </button>
-                        <h1 className="text-xl md:text-4xl font-black tracking-tighter uppercase italic">Checkout</h1>
+                        <div className="flex flex-col">
+                            <h1 className="text-xl md:text-4xl font-black tracking-tighter uppercase italic">Checkout</h1>
+                            <p className="text-[10px] opacity-30 font-mono">API: {import.meta.env.VITE_API_URL || 'NOT SET'}</p>
+                        </div>
                     </div>
 
                     {/* Stepper */}
@@ -370,7 +485,7 @@ export const CheckoutPage = ({ onBack }: { onBack: () => void }) => {
                                                     </div>
                                                 </div>
                                                 <span className="font-black text-primary">
-                                                    {hasFreeDeliveryItem ? 'Free' : `Rs. ${rate.price.toLocaleString()}`}
+                                                    {rate.price === 0 ? 'Free' : `Rs. ${rate.price.toLocaleString()}`}
                                                 </span>
                                             </label>
                                         ))
@@ -399,12 +514,21 @@ export const CheckoutPage = ({ onBack }: { onBack: () => void }) => {
                                         >
                                             <div className="flex items-center justify-between">
                                                 <div className="flex items-center gap-3 md:gap-4 overflow-hidden">
-                                                    <div className="w-10 h-10 md:w-12 md:h-12 bg-white rounded-lg md:rounded-xl flex items-center justify-center p-2 shadow-sm flex-shrink-0">
-                                                        <span className="text-orange-500 font-black text-lg md:text-xl">FP</span>
+                                                    <div className="w-10 h-10 md:w-12 md:h-12 bg-white rounded-lg md:rounded-xl flex items-center justify-center p-2 shadow-sm flex-shrink-0 relative overflow-hidden group">
+                                                        <div className="absolute inset-0 bg-gradient-to-br from-orange-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                                                        <span className="text-orange-500 font-black text-lg md:text-xl relative z-10">FP</span>
                                                     </div>
                                                     <div className="min-w-0">
-                                                        <p className="font-black text-sm md:text-base truncate">FastPay / Cards</p>
-                                                        <p className="text-[10px] md:text-xs opacity-50 truncate">Secure online payment</p>
+                                                            <div className="flex items-center gap-2">
+                                                                <p className="font-black text-sm md:text-base truncate">FastPay / Cards</p>
+                                                                <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-white/10 shadow-sm">
+                                                                    <svg className="h-2 md:h-2.5 w-auto" viewBox="0 0 444 141" xmlns="http://www.w3.org/2000/svg">
+                                                                        <path d="M129.537 0l-22.56 141h-34.912L51.527.185c-1.393-.556-3.483-1.485-6.613-1.485H0l.928 2.041c28.718 7.234 47.693 23.364 55.454 44.5 2.784 7.604 5.378 14.84 5.378 21.332 0 4.266-.372 8.718-.372 13.541H96.34L117.859 0h11.678zm102.343 61.64c0-21.703-30.053-22.815-29.867-32.46.185-3.153 3.153-6.492 9.274-7.42 2.968-.371 11.129-.741 20.589 3.525l3.71 1.854 3.339-20.774c-5.564-2.226-12.798-4.266-21.516-4.266-24.113 0-41.177 12.798-41.548 31.16-.371 23.928 33.387 25.411 33.2 37.097-.185 3.524-4.266 7.419-10.758 8.161-8.532.927-16.137-1.484-22.629-4.266l-3.339-1.669-3.71 22.073c6.863 3.153 16.51 5.564 26.524 5.564 25.596 0 42.661-12.798 42.661-31.531l0 .001zM288.75 0l-26.339 141h31.903l26.339-141H288.75zm123.532 0l-25.226 91.065-10.194-46.742c-2.411-12.242-8.347-16.137-18.734-16.508l-55.823-1.669c10.016 4.451 16.137 7.79 20.403 14.468 3.524 5.379 5.379 12.613 6.863 21.887l15.024 72.887 34.162.186L444 0h-31.718z" fill="#2563EB"/>
+                                                                    </svg>
+                                                                    <img src="https://upload.wikimedia.org/wikipedia/commons/2/2a/Mastercard-logo.svg" className="h-3 md:h-4" alt="Mastercard" />
+                                                                </div>
+                                                            </div>
+                                                        <p className="text-[10px] md:text-xs opacity-50 truncate">Secure online payment via Cards</p>
                                                     </div>
                                                 </div>
                                                 {formData.paymentMethod === 'fastpay' && <CheckCircle2 className="text-primary w-6 h-6" />}
@@ -482,7 +606,14 @@ export const CheckoutPage = ({ onBack }: { onBack: () => void }) => {
                                         {item.image && <img src={item.image} alt={item.name} className="w-full h-full object-cover" />}
                                     </div>
                                     <div className="flex-grow min-w-0">
-                                        <p className="font-bold text-sm truncate">{item.name}</p>
+                                        <div className="flex flex-wrap items-center gap-2">
+                                            <p className="font-bold text-sm truncate">{item.name}</p>
+                                            {(item.is_free_delivery === true || products.find(p => Number(p.id) === Number(item.id))?.is_free_delivery === true) && (
+                                                <span className="text-[8px] font-black uppercase bg-green-500/20 text-green-500 px-1.5 py-0.5 rounded-full flex-shrink-0">
+                                                    Free Delivery
+                                                </span>
+                                            )}
+                                        </div>
                                         <p className="text-xs opacity-50">{item.quantity} × Rs. {item.price.toLocaleString()}</p>
                                         {item.variant_combo && Object.entries(item.variant_combo as Record<string, string>).length > 0 && (
                                             <div className="flex flex-wrap gap-1 mt-1">
@@ -499,22 +630,53 @@ export const CheckoutPage = ({ onBack }: { onBack: () => void }) => {
                             ))}
                         </div>
 
-                        <div className="pt-8 border-t border-foreground/10 space-y-4">
+                        {/* Voucher Section */}
+                        <div className="pt-6 border-t border-foreground/10 space-y-3">
+                            <label className="text-[10px] font-black uppercase tracking-widest opacity-30">Promo Code</label>
+                            <div className="flex gap-2">
+                                <input
+                                    type="text"
+                                    placeholder="Enter code"
+                                    value={voucherCode}
+                                    onChange={(e) => setVoucherCode(e.target.value.toUpperCase())}
+                                    className="flex-grow bg-foreground/5 border-none rounded-xl px-4 py-2 text-sm font-bold focus:ring-1 ring-primary/30 outline-none"
+                                />
+                                <button
+                                    onClick={handleApplyVoucher}
+                                    disabled={voucherLoading || !voucherCode.trim()}
+                                    className="px-4 py-2 bg-primary text-white rounded-xl font-bold text-xs hover:scale-105 transition-all disabled:opacity-50"
+                                >
+                                    {voucherLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Apply'}
+                                </button>
+                            </div>
+                            {voucherError && <p className="text-[10px] text-red-500 font-bold">{voucherError}</p>}
+                            {appliedVoucher && (
+                                <div className="flex items-center justify-between p-2 bg-green-500/10 border border-green-500/20 rounded-xl">
+                                    <span className="text-[10px] font-black text-green-500 uppercase">{appliedVoucher.code} APPLIED</span>
+                                    <button onClick={() => setAppliedVoucher(null)} className="text-[10px] font-black text-green-500/50 hover:text-green-500">Remove</button>
+                                </div>
+                            )}
+                        </div>
+
+                        <div className="pt-6 border-t border-foreground/10 space-y-4">
                             <div className="flex justify-between text-sm opacity-50 font-bold">
                                 <span>Subtotal</span>
                                 <span>Rs. {total.toLocaleString()}</span>
                             </div>
                             <div className="flex justify-between text-sm opacity-50 font-bold">
                                 <span>Shipping</span>
-                                {hasFreeDeliveryItem ? (
-                                    <div className="flex flex-col items-end">
-                                        <span className="line-through text-xs">Rs. {(selectedRate?.price || 0).toLocaleString()}</span>
-                                        <span className="text-green-500 text-xs font-black uppercase">Free</span>
-                                    </div>
+                                {shippingCost === 0 ? (
+                                    <span className="text-green-500 text-xs font-black uppercase">Free</span>
                                 ) : (
                                     <span>Rs. {shippingCost.toLocaleString()}</span>
                                 )}
                             </div>
+                            {appliedVoucher && (
+                                <div className="flex justify-between text-sm font-bold text-green-500">
+                                    <span>Discount</span>
+                                    <span>- Rs. {discountAmount.toLocaleString()}</span>
+                                </div>
+                            )}
                             <div className="flex justify-between pt-4 text-2xl font-black tracking-tighter border-t border-foreground/10">
                                 <span className="italic">Total</span>
                                 <span className="text-primary">Rs. {finalTotal.toLocaleString()}</span>

@@ -49,8 +49,9 @@ export const useCartSync = () => {
                     .upsert({
                         user_id: user.id,
                         product_id: productId,
-                        quantity: quantity
-                    }, { onConflict: 'user_id,product_id' });
+                        quantity: quantity,
+                        variant_combo: (useCartStore.getState().items.find(i => i.id === productId) as any)?.variant_combo || {}
+                    }, { onConflict: 'user_id,product_id,variant_combo' });
             }
         } catch (err) {
             console.error('Error syncing cart to DB:', err);

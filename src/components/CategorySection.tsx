@@ -99,12 +99,12 @@ export const CategorySection = ({ activeCategory, onCategoryChange }: { activeCa
                                     className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
                                 />
 
-                                {/* Gradient Overlay for Text Readability */}
-                                <div className={`absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent transition-opacity ${isActive ? 'opacity-70' : 'opacity-100 group-hover:opacity-90'}`} />
+                                {/* Gradient Overlay for Text Readability - Enhanced */}
+                                <div className={`absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent transition-opacity duration-500 ${isActive ? 'opacity-80' : 'opacity-100 group-hover:opacity-90'}`} />
 
-                                {/* Center-aligned name at bottom */}
-                                <div className="absolute bottom-0 left-0 right-0 p-2 sm:p-3 text-center">
-                                    <span className={`text-[10px] sm:text-[11px] font-black uppercase tracking-tighter drop-shadow-lg leading-none italic block transition-colors ${isActive ? 'text-primary' : 'text-white'}`}>
+                                {/* Center-aligned name at bottom - Increased size */}
+                                <div className="absolute bottom-0 left-0 right-0 p-3 sm:p-4 text-center">
+                                    <span className={`text-[12px] sm:text-[14px] font-black uppercase tracking-tight drop-shadow-2xl leading-none italic block transition-all duration-500 group-hover:scale-110 ${isActive ? 'text-primary' : 'text-white'}`}>
                                         {category.name}
                                     </span>
                                 </div>
