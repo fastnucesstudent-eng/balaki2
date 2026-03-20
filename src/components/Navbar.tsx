@@ -28,6 +28,7 @@ export const Navbar = ({
     const [isMenuOpen, setIsMenuOpen] = useState(false);
     const [isCategoriesOpen, setIsCategoriesOpen] = useState(false);
     const [isScrolled, setIsScrolled] = useState(false);
+    const [isMobileSearchOpen, setIsMobileSearchOpen] = useState(false);
 
     useEffect(() => {
         const handleScroll = () => {
@@ -54,88 +55,123 @@ export const Navbar = ({
             animate={{ y: 0 }}
             className={`fixed top-0 left-0 w-full z-50 px-2 sm:px-6 py-2 sm:py-4 transition-all duration-300 no-print ${isScrolled ? 'bg-background/80 backdrop-blur-xl border-b border-white/5 py-1 sm:py-2' : 'bg-transparent'}`}
         >
-            <nav className="max-w-7xl mx-auto glass rounded-full px-4 sm:px-6 py-2 sm:py-3 flex items-center justify-between shadow-2xl border-white/10">
-                <div className="flex items-center gap-8">
-                    <div
-                        onClick={() => { window.location.hash = ''; window.scrollTo({ top: 0, behavior: 'smooth' }); }}
-                        className="flex items-center gap-2 sm:gap-3 cursor-pointer group"
+            <nav className="max-w-7xl mx-auto glass rounded-full px-4 sm:px-6 py-2 sm:py-3 flex items-center justify-between shadow-2xl border-white/10 gap-2">
+                
+                {/* Expandable Mobile Search */}
+                {isMobileSearchOpen ? (
+                    <motion.div
+                        initial={{ opacity: 0, width: 0 }}
+                        animate={{ opacity: 1, width: '100%' }}
+                        className="flex items-center w-full bg-foreground/5 border border-primary/30 shadow-sm rounded-full px-4 py-2 ring-2 ring-primary/20"
                     >
-                        <img
-                            src="/logo.png"
-                            alt="TARZIFY Logo"
-                            className="h-7 md:h-10 w-7 md:w-10 rounded-full object-cover border border-white/10 group-hover:scale-105 transition-transform shadow-lg"
-                        />
-                        <span className="text-xl md:text-3xl font-black tracking-tighter bg-gradient-to-r from-primary via-accent to-primary bg-[length:200%_auto] animate-gradient bg-clip-text text-transparent group-hover:scale-105 transition-transform">
-                            TARZIFY
-                        </span>
-                    </div>
-                    <div className="hidden md:flex items-center gap-6">
-                        {['Home', 'Shop', 'Categories'].map((item) => (
-                            <a
-                                key={item}
-                                href={item === 'Home' ? '#' : item === 'Shop' ? '#catalog' : '#catalog'}
-                                className="text-sm font-medium hover:text-primary transition-colors relative group"
-                            >
-                                {item}
-                                <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-primary transition-all group-hover:w-full" />
-                            </a>
-                        ))}
-                        <button onClick={() => window.location.hash = '#track-order'} className="text-sm font-black text-foreground hover:text-primary transition-all">
-                            Track Order
-                        </button>
-                        {user && (
-                            <>
-                                {(role === 'merchant' || role === 'admin') && (
-                                    <button
-                                        onClick={() => window.location.hash = '#merchant'}
-                                        className="text-sm font-black text-foreground hover:text-primary transition-all"
-                                    >
-                                        Merchant Panel
-                                    </button>
-                                )}
-                                {role === 'admin' && (
-                                    <button
-                                        onClick={() => window.location.hash = '#admin'}
-                                        className="text-sm font-black text-foreground hover:text-primary transition-all"
-                                    >
-                                        Admin Panel
-                                    </button>
-                                )}
-                                <button
-                                    onClick={() => window.location.hash = '#profile'}
-                                    className="text-sm font-black text-foreground hover:scale-105 transition-transform"
-                                >
-                                    Account
-                                </button>
-                            </>
-                        )}
-                    </div>
-                </div>
-
-                <div className="flex items-center gap-4">
-                    <div className="hidden sm:flex items-center bg-foreground/5 border border-foreground/10 shadow-sm rounded-full px-4 py-2 focus-within:ring-2 ring-primary/30 focus-within:border-primary/50 transition-all group/search">
-                        <Search className="w-4 h-4 opacity-50 group-focus-within/search:text-primary group-focus-within/search:opacity-100 transition-all" />
+                        <Search className="w-4 h-4 text-primary shrink-0" />
                         <input
+                            autoFocus
                             type="text"
-                            id="search"
-                            name="search"
-                            placeholder="Search items..."
+                            placeholder="Search products..."
                             onChange={(e) => onSearch(e.target.value)}
-                            className="bg-transparent border-none focus:outline-none text-sm px-2 w-32 lg:w-48 font-medium"
+                            className="bg-transparent border-none focus:outline-none text-sm px-3 w-full font-medium"
                         />
-                    </div>
-
-                    <div className="flex items-center gap-2">
-                        <ThemeToggle />
-                        <button
-                            onClick={onCartClick}
-                            className="p-2 rounded-full hover:bg-foreground/5 relative"
-                        >
-                            <ShoppingCart className="w-6 h-6" />
-                            <span className="absolute top-0 right-0 w-4 h-4 bg-primary text-[10px] text-white rounded-full flex items-center justify-center font-bold">
-                                {cartItemsCount}
-                            </span>
+                        <button onClick={() => { setIsMobileSearchOpen(false); onSearch(''); }} className="p-1 hover:bg-foreground/10 rounded-full shrink-0 transition-colors">
+                            <X className="w-4 h-4" />
                         </button>
+                    </motion.div>
+                ) : (
+                    <>
+                        {/* Logo and Desktop Links */}
+                        <div className="flex items-center gap-8 min-w-0">
+                            <div
+                                onClick={() => { window.location.hash = ''; window.scrollTo({ top: 0, behavior: 'smooth' }); }}
+                                className="flex items-center gap-2 sm:gap-3 cursor-pointer group shrink-0"
+                            >
+                                <img
+                                    src="/logo.png"
+                                    alt="TARZIFY Logo"
+                                    className="h-7 md:h-10 w-7 md:w-10 rounded-full object-cover border border-white/10 group-hover:scale-105 transition-transform shadow-lg"
+                                />
+                                <span className="text-xl md:text-3xl font-black tracking-tighter bg-gradient-to-r from-primary via-accent to-primary bg-[length:200%_auto] animate-gradient bg-clip-text text-transparent group-hover:scale-105 transition-transform">
+                                    TARZIFY
+                                </span>
+                            </div>
+                            <div className="hidden md:flex items-center gap-6">
+                                {['Home', 'Shop', 'Categories'].map((item) => (
+                                    <a
+                                        key={item}
+                                        href={item === 'Home' ? '#' : item === 'Shop' ? '#catalog' : '#catalog'}
+                                        className="text-sm font-medium hover:text-primary transition-colors relative group"
+                                    >
+                                        {item}
+                                        <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-primary transition-all group-hover:w-full" />
+                                    </a>
+                                ))}
+                                <button onClick={() => window.location.hash = '#track-order'} className="text-sm font-black text-foreground hover:text-primary transition-all">
+                                    Track Order
+                                </button>
+                                {user && (
+                                    <>
+                                        {(role === 'merchant' || role === 'admin') && (
+                                            <button
+                                                onClick={() => window.location.hash = '#merchant'}
+                                                className="text-sm font-black text-foreground hover:text-primary transition-all"
+                                            >
+                                                Merchant Panel
+                                            </button>
+                                        )}
+                                        {role === 'admin' && (
+                                            <button
+                                                onClick={() => window.location.hash = '#admin'}
+                                                className="text-sm font-black text-foreground hover:text-primary transition-all"
+                                            >
+                                                Admin Panel
+                                            </button>
+                                        )}
+                                        <button
+                                            onClick={() => window.location.hash = '#profile'}
+                                            className="text-sm font-black text-foreground hover:scale-105 transition-transform"
+                                        >
+                                            Account
+                                        </button>
+                                    </>
+                                )}
+                            </div>
+                        </div>
+
+                        {/* Top Right Utilities */}
+                        <div className="flex items-center gap-2 sm:gap-4 shrink-0">
+                            {/* Desktop Search */}
+                            <div className="hidden sm:flex items-center bg-foreground/5 border border-foreground/10 shadow-sm rounded-full px-4 py-2 focus-within:ring-2 ring-primary/30 focus-within:border-primary/50 transition-all group/search">
+                                <Search className="w-4 h-4 opacity-50 group-focus-within/search:text-primary group-focus-within/search:opacity-100 transition-all" />
+                                <input
+                                    type="text"
+                                    id="search"
+                                    name="search"
+                                    placeholder="Search items..."
+                                    onChange={(e) => onSearch(e.target.value)}
+                                    className="bg-transparent border-none focus:outline-none text-sm px-2 w-32 lg:w-48 font-medium"
+                                />
+                            </div>
+
+                            {/* Mobile Search Icon */}
+                            <button
+                                onClick={() => setIsMobileSearchOpen(true)}
+                                className="sm:hidden p-2 rounded-full hover:bg-foreground/5 transition-colors"
+                            >
+                                <Search className="w-5 h-5" />
+                            </button>
+
+                            <div className="hidden sm:block">
+                                <ThemeToggle />
+                            </div>
+
+                            <button
+                                onClick={onCartClick}
+                                className="p-2 rounded-full hover:bg-foreground/5 relative"
+                            >
+                                <ShoppingCart className="w-5 h-5 sm:w-6 sm:h-6" />
+                                <span className="absolute top-0 right-0 w-4 h-4 bg-primary text-[10px] text-white rounded-full flex items-center justify-center font-bold">
+                                    {cartItemsCount}
+                                </span>
+                            </button>
 
                         {user ? (
                             <div className="relative">
@@ -209,7 +245,8 @@ export const Navbar = ({
                             {isMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
                         </button>
                     </div>
-                </div>
+                    </>
+                )}
             </nav>
 
             {/* Mobile Menu Content */}
