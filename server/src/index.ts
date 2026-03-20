@@ -18,7 +18,7 @@ import { supabase } from './lib/supabase';
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-app.use(morgan('dev'));
+app.use(process.env.NODE_ENV === 'production' ? morgan('combined') : morgan('dev'));
 
 // CORS/Security Middleware - must be at the top
 app.use((req, res, next) => {
@@ -109,8 +109,14 @@ app.post('/api/update-password', async (req, res) => {
     }
 });
 
-// Seed Endpoint to ensure 8+ products
+// Seed Endpoint - PROTECTED by Admin Secret
 app.post('/api/setup/seed', async (req, res) => {
+    // Require a secret to prevent unauthorized seeding
+    const secret = req.headers['x-admin-secret'];
+    if (!secret || secret !== process.env.ADMIN_SEED_SECRET) {
+        return res.status(403).json({ error: 'Forbidden: Invalid admin secret' });
+    }
+
     // Get a default merchant to assign products to if none exists
     const { data: merchants } = await supabase.from('profiles').select('id').eq('role', 'merchant').limit(1);
     const defaultMerchantId = merchants?.[0]?.id;
@@ -118,18 +124,13 @@ app.post('/api/setup/seed', async (req, res) => {
     const products = [
         { name: 'Elite Carbon Pro X', sku: 'HEAD-001', price: 15500, compare_at_price: 18000, image_url: 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=800&q=80', image_urls: ['https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=800&q=80'], category: 'Electronics', stock: 50, merchant_id: defaultMerchantId, description: 'The ultimate wireless audio experience with active noise cancellation.' },
         { name: 'Onyx Leather Chrono', sku: 'WATCH-002', price: 8500, compare_at_price: 12000, image_url: 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=800&q=80', image_urls: ['https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=800&q=80'], category: 'Accessories', stock: 30, merchant_id: defaultMerchantId, description: 'Timeless design meeting modern precision.' },
-        { name: 'Solaris Max Beam', sku: 'LIGHT-003', price: 4200, compare_at_price: 5500, image_url: 'https://images.unsplash.com/photo-1517055727180-60b70c3f5904?w=800&q=80', image_urls: ['https://images.unsplash.com/photo-1517055727180-60b70c3f5904?w=800&q=80'], category: 'Outdoor', stock: 100, merchant_id: defaultMerchantId, description: '10000 Lumens of pure daylight in the palm of your hand.' },
-        { name: 'Vortex G-Series Mouse', sku: 'MOUSE-004', price: 6800, compare_at_price: 8500, image_url: 'https://images.unsplash.com/photo-1527814732934-94b1ec5d0927?w=800&q=80', image_urls: ['https://images.unsplash.com/photo-1527814732934-94b1ec5d0927?w=800&q=80'], category: 'Electronics', stock: 40, merchant_id: defaultMerchantId, description: 'Zero lag, maximum precision for competitive play.' },
-        { name: 'FitPulse Active V2', sku: 'FIT-005', price: 5500, compare_at_price: 7500, image_url: 'https://images.unsplash.com/photo-1575311373937-040b8e1fd5b6?w=800&q=80', image_urls: ['https://images.unsplash.com/photo-1575311373937-040b8e1fd5b6?w=800&q=80'], category: 'Accessories', stock: 75, merchant_id: defaultMerchantId, description: 'Track your health, own your progress.' },
-        { name: 'ThunderBox 360', sku: 'SPK-006', price: 12000, compare_at_price: 15000, image_url: 'https://images.unsplash.com/photo-1608156639585-b3a032ef9689?w=800&q=80', image_urls: ['https://images.unsplash.com/photo-1608156639585-b3a032ef9689?w=800&q=80'], category: 'Electronics', stock: 25, merchant_id: defaultMerchantId, description: 'Omni-directional sound for the perfect house party.' },
-        { name: 'Apex Ridge Walker', sku: 'BOOT-007', price: 18500, compare_at_price: 22000, image_url: 'https://images.unsplash.com/photo-1520639889313-72702c18d1f0?w=800&q=80', image_urls: ['https://images.unsplash.com/photo-1520639889313-72702c18d1f0?w=800&q=80'], category: 'Outdoor', stock: 15, merchant_id: defaultMerchantId, description: 'Unmatched grip for the most demanding trails.' },
-        { name: 'CloudSleep Travel Pro', sku: 'PILLOW-008', price: 2200, compare_at_price: 3500, image_url: 'https://images.unsplash.com/photo-1584305116359-ef81baaf2fd3?w=800&q=80', image_urls: ['https://images.unsplash.com/photo-1584305116359-ef81baaf2fd3?w=800&q=80'], category: 'Accessories', stock: 200, merchant_id: defaultMerchantId, description: 'Memory foam comfort for long-haul journeys.' }
+        { name: 'Solaris Max Beam', sku: 'LIGHT-003', price: 4200, compare_at_price: 5500, image_url: 'https://images.unsplash.com/photo-1517055727180-60b70c3f5904?w=800&q=80', image_urls: ['https://images.unsplash.com/photo-1517055727180-60b70c3f5904?w=800&q=80'], category: 'Outdoor', stock: 100, merchant_id: defaultMerchantId, description: '10000 Lumens of pure daylight in the palm of your hand.' }
     ];
 
     try {
         const { error } = await supabase.from('products').upsert(products, { onConflict: 'sku' });
         if (error) throw error;
-        res.json({ success: true, message: 'Products seeded successfully with enhanced descriptions and metadata' });
+        res.json({ success: true, message: 'Products seeded successfully' });
     } catch (error: any) {
         console.error('Seed error:', error);
         res.status(400).json({ success: false, error: error.message });
