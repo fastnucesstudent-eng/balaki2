@@ -188,6 +188,10 @@ export const CheckoutPage = ({ onBack }: { onBack: () => void }) => {
                 setStep0Error('Full name is required.');
                 return;
             }
+            if (!formData.email.trim() || !/\S+@\S+\.\S+/.test(formData.email)) {
+                setStep0Error('A valid email is required to send your order receipt.');
+                return;
+            }
             if (!formData.phone.trim()) {
                 setStep0Error('Phone number is required.');
                 return;
@@ -401,6 +405,19 @@ export const CheckoutPage = ({ onBack }: { onBack: () => void }) => {
                                             autoComplete="tel"
                                             placeholder="+92 3XX XXXXXXX"
                                             onChange={e => setFormData({ ...formData, phone: e.target.value })}
+                                            className="w-full glass border border-foreground/20 rounded-xl md:rounded-2xl p-3 md:p-4 text-sm md:text-base focus:ring-2 ring-primary/30 outline-none"
+                                        />
+                                    </div>
+                                    <div className="col-span-2 space-y-1">
+                                        <label htmlFor="email" className="text-[10px] font-black uppercase tracking-widest opacity-30">Email Address</label>
+                                        <input
+                                            type="email"
+                                            id="email"
+                                            name="email"
+                                            autoComplete="email"
+                                            placeholder="you@example.com"
+                                            value={formData.email}
+                                            onChange={e => setFormData({ ...formData, email: e.target.value })}
                                             className="w-full glass border border-foreground/20 rounded-xl md:rounded-2xl p-3 md:p-4 text-sm md:text-base focus:ring-2 ring-primary/30 outline-none"
                                         />
                                     </div>
