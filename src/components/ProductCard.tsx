@@ -78,29 +78,25 @@ export const ProductCard = ({ product, onAddToCart, onQuickView }: ProductCardPr
             {/* Image Container */}
             <div className="relative aspect-square overflow-hidden bg-gray-50 dark:bg-zinc-800/20">
                 
-                {/* Badges Overlay - Phase 2 Alignment */}
-                <div className="absolute top-2 right-2 flex flex-col items-end gap-1.5 z-10">
+                {/* Badges Overlay - Single Stacked Container to prevent collision on narrow mobile cards */}
+                <div className="absolute top-2 left-2 flex flex-col items-start gap-1 z-10">
                     {isOOS && (
-                        <div className="bg-red-500/90 backdrop-blur-md text-white text-[6px] md:text-[8px] font-black px-1 py-0.5 md:px-2 md:py-1 rounded-md uppercase italic shadow-lg shadow-red-500/20">
+                        <div className="bg-red-500/90 backdrop-blur-md text-white text-[6px] md:text-[8px] font-black px-1.5 py-0.5 md:px-2 md:py-1 rounded-md uppercase italic shadow-lg shadow-red-500/20">
                             Sold Out
                         </div>
                     )}
                     {discount > 0 && !isOOS && (
-                        <div className="bg-primary/95 backdrop-blur-md text-white text-[6px] md:text-[8px] font-black px-1 py-0.5 md:px-2 md:py-1 rounded-md uppercase italic shadow-lg shadow-primary/20">
+                        <div className="bg-primary/95 backdrop-blur-md text-white text-[6px] md:text-[8px] font-black px-1.5 py-0.5 md:px-2 md:py-1 rounded-md uppercase italic shadow-lg shadow-primary/20">
                             -{discount}% OFF
                         </div>
                     )}
-                </div>
-
-                {/* Free Delivery Badge - Balanced on Left */}
-                {is_free_delivery && (
-                    <div className="absolute top-2 left-2 z-10 transition-transform group-hover:-translate-y-1">
-                        <div className="bg-green-500/95 backdrop-blur-sm text-white text-[6px] md:text-[9px] font-black px-1.5 py-0.5 md:px-2 md:py-1 rounded-md shadow-xl shadow-green-500/20 uppercase italic tracking-tighter flex items-center gap-1">
+                    {is_free_delivery && (
+                        <div className="bg-green-500/95 backdrop-blur-sm text-white text-[6px] md:text-[8px] font-black px-1.5 py-0.5 md:px-2 md:py-1 rounded-md shadow-xl shadow-green-500/20 uppercase italic tracking-tighter flex items-center gap-1 group-hover:-translate-y-0.5 transition-transform">
                             <span className="w-1 h-1 bg-white rounded-full animate-pulse" />
                             Free Delivery
                         </div>
-                    </div>
-                )}
+                    )}
+                </div>
 
                 {finalImage && (
                     <img
