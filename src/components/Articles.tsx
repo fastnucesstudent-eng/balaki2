@@ -9,6 +9,8 @@ export const Articles = () => {
     const [selectedArticle, setSelectedArticle] = useState<any | null>(null);
 
     useEffect(() => {
+        let mounted = true;
+
         const fetchArticles = async () => {
             try {
                 const { data, error } = await supabase
@@ -18,16 +20,20 @@ export const Articles = () => {
                     .order('created_at', { ascending: false })
                     .limit(3);
 
+                if (!mounted) return;
                 if (error) throw error;
                 if (data) setArticles(data);
-            } catch (err) {
+            } catch (err: any) {
+                // Ignore AbortError from React 18 strict mode unmount/remount
+                if (err?.name === 'AbortError' || err?.message?.includes('AbortError') || err?.code === '') return;
                 console.error('Error fetching articles:', err);
             } finally {
-                setLoading(false);
+                if (mounted) setLoading(false);
             }
         };
 
         fetchArticles();
+        return () => { mounted = false; };
     }, []);
 
     useEffect(() => {

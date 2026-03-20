@@ -594,20 +594,25 @@ router.post('/create', async (req, res) => {
         // Send Confirmation Email via Hostinger SMTP
         const finalEmail = req.body.email || email; // Prefer provided email from body
 
+        const subtotal = items.reduce((sum: number, item: any) => sum + (item.price * item.quantity), 0);
+        const shippingCost = shippingAmount !== undefined ? shippingAmount : (total - subtotal + (finalDiscountAmount || 0));
+
+        // Send customer email BEFORE res.json() - Vercel kills background tasks after response
         if (finalEmail) {
-            console.log(`Backgrounding order email to: ${finalEmail}`);
-            const subtotal = items.reduce((sum: number, item: any) => sum + (item.price * item.quantity), 0);
-            const shippingCost = shippingAmount !== undefined ? shippingAmount : (total - subtotal + (finalDiscountAmount || 0));
-            
-            // Background email sending - DO NOT AWAIT
-            sendOrderEmail(finalEmail, order, items, subtotal, shippingCost, total, shippingAddress).catch(err => console.error('Order Email Background Error:', err));
+            console.log(`Sending order email to: ${finalEmail}`);
+            try {
+                await sendOrderEmail(finalEmail, order, items, subtotal, shippingCost, total, shippingAddress);
+                console.log('Customer email sent successfully');
+            } catch (emailErr) {
+                console.error('Customer email failed:', emailErr);
+                // Don't fail the order if email fails
+            }
         } else {
             console.warn('No email found for order notification. Skipping.');
         }
 
-        // 2.5 Notify Merchants
+        // 2.5 Notify Merchants - await all in parallel before responding
         try {
-            // Group items by merchant
             const merchantGroups: Record<string, any[]> = {};
             for (const item of items) {
                 const merchantId = merchantMap[item.id];
@@ -617,26 +622,16 @@ router.post('/create', async (req, res) => {
                 }
             }
 
-            // Send email to each merchant            // Send email to each merchant - Backgrounded
-            for (const [merchantId, merchantItems] of Object.entries(merchantGroups)) {
-                supabase.from('profiles')
-                    .select('email')
-                    .eq('id', merchantId)
-                    .single()
-                    .then(({ data: merchantProfile }) => {
-                        if (merchantProfile?.email) {
-                            sendMerchantOrderEmail(
-                                merchantProfile.email,
-                                order,
-                                merchantItems,
-                                customerName,
-                                shippingAddress,
-                                phone
-                            ).catch(err => console.error('Merchant Email Background Error:', err));
-                        }
-                    });
-            }
+            // Fetch all merchant emails in parallel, then send emails in parallel
+            const merchantEmailPromises = Object.entries(merchantGroups).map(async ([merchantId, merchantItems]) => {
+                const { data: merchantProfile } = await supabase.from('profiles').select('email').eq('id', merchantId).single();
+                if (merchantProfile?.email) {
+                    await sendMerchantOrderEmail(merchantProfile.email, order, merchantItems, customerName, shippingAddress, phone);
+                    console.log(`Merchant email sent to ${merchantProfile.email}`);
+                }
+            });
 
+            await Promise.allSettled(merchantEmailPromises);
         } catch (mErr) {
             console.error('Error in merchant notification flow:', mErr);
         }
