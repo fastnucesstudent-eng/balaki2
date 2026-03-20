@@ -13,12 +13,12 @@ const sendOrderEmail = async (email: string, order: any, items: any, subtotal: n
     }
 
     const transporter = nodemailer.createTransport({
-        host: process.env.SMTP_HOST || 'smtp.hostinger.com',
-        port: Number(process.env.SMTP_PORT) || 465,
+        host: process.env.SMTP_HOST?.trim() || 'smtp.hostinger.com',
+        port: Number(process.env.SMTP_PORT?.trim()) || 465,
         secure: true, // true for 465, false for 587
         auth: {
-            user: process.env.SMTP_USER,
-            pass: process.env.SMTP_PASS
+            user: process.env.SMTP_USER?.trim(),
+            pass: process.env.SMTP_PASS?.trim()
         }
     });
 
@@ -177,12 +177,12 @@ const sendMerchantOrderEmail = async (merchantEmail: string, order: any, merchan
     if (!process.env.SMTP_USER || !process.env.SMTP_PASS) return;
 
     const transporter = nodemailer.createTransport({
-        host: process.env.SMTP_HOST || 'smtp.hostinger.com',
-        port: Number(process.env.SMTP_PORT) || 465,
+        host: process.env.SMTP_HOST?.trim() || 'smtp.hostinger.com',
+        port: Number(process.env.SMTP_PORT?.trim()) || 465,
         secure: true,
         auth: {
-            user: process.env.SMTP_USER,
-            pass: process.env.SMTP_PASS
+            user: process.env.SMTP_USER?.trim(),
+            pass: process.env.SMTP_PASS?.trim()
         }
     });
 
@@ -210,7 +210,7 @@ const sendMerchantOrderEmail = async (merchantEmail: string, order: any, merchan
 
     try {
         await transporter.sendMail({
-            from: process.env.SMTP_FROM || `"TARZIFY Seller" <${process.env.SMTP_USER}>`,
+            from: process.env.SMTP_FROM?.trim() || `"TARZIFY Seller" <${process.env.SMTP_USER?.trim()}>`,
             to: merchantEmail,
             subject: `New Order Received: #${order.order_number}`,
             html: `
