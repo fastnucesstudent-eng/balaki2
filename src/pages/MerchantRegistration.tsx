@@ -112,23 +112,36 @@ export const MerchantRegistration = ({ onBack }: { onBack: () => void }) => {
             setLoading(true);
             try {
                 const slug = generateSlug(formData.storeName);
+                
+                // Use a standard select instead of maybeSingle to avoid potential signal issues
                 const { data, error: checkError } = await supabase
                     .from('profiles')
                     .select('id')
                     .eq('store_slug', slug)
-                    .maybeSingle();
+                    .limit(1);
 
-                if (checkError) throw checkError;
-                if (data) {
+                if (checkError) {
+                    // Ignore abort errors if they happen without reason, as they might be false positives
+                    if (checkError.message?.includes('aborted')) {
+                        console.warn('Check aborted, proceeding anyway...');
+                    } else {
+                        throw checkError;
+                    }
+                }
+
+                if (data && data.length > 0) {
                     setError('This store name is already taken. Please choose another one.');
                     setLoading(false);
                     return;
                 }
             } catch (err: any) {
                 console.error('Error checking store name:', err);
-                setError('Failed to verify store name availability. Please try again.');
-                setLoading(false);
-                return;
+                // If it's an abort error, we might want to let them through or try again silently
+                if (!err.message?.includes('aborted')) {
+                    setError('Failed to verify store name availability. Please try again.');
+                    setLoading(false);
+                    return;
+                }
             } finally {
                 setLoading(false);
             }
@@ -146,12 +159,38 @@ export const MerchantRegistration = ({ onBack }: { onBack: () => void }) => {
         try {
             const slug = generateSlug(formData.storeName);
 
+            // Double check store slug availability one last time before actual signup/profile creation
+            try {
+                const { data, error: checkError } = await supabase
+                    .from('profiles')
+                    .select('id')
+                    .eq('store_slug', slug)
+                    .limit(1);
+
+                if (checkError) {
+                    if (checkError.message?.includes('aborted')) {
+                        console.warn('Final check aborted, proceeding...');
+                    } else {
+                        throw checkError;
+                    }
+                }
+                if (data && data.length > 0) {
+                    setError('This store name is already taken. Please choose another one.');
+                    setLoading(false);
+                    return;
+                }
+            } catch (err: any) {
+                console.error('Submit store check error:', err);
+                if (!err.message?.includes('aborted')) throw err;
+            }
+
             // 1. Check if user already exists or needs signup
             let targetUserId = '';
             const { data: { session }, error: sessionError } = await supabase.auth.getSession();
             
             if (sessionError) {
                 console.error('Session error:', sessionError);
+                if (!sessionError.message?.includes('aborted')) throw sessionError;
             }
 
             if (session?.user) {
@@ -169,7 +208,14 @@ export const MerchantRegistration = ({ onBack }: { onBack: () => void }) => {
                     }
                 });
 
-                if (signUpError) throw signUpError;
+                if (signUpError) {
+                    if (signUpError.message?.includes('aborted')) {
+                         setError('Connection interrupted. Please click submit again.');
+                         setLoading(false);
+                         return;
+                    }
+                    throw signUpError;
+                }
                 if (!authData.user) throw new Error('Registration failed.');
                 targetUserId = authData.user.id;
             }
@@ -192,7 +238,14 @@ export const MerchantRegistration = ({ onBack }: { onBack: () => void }) => {
                     merchant_status: 'pending',
                 });
 
-            if (profileError) throw profileError;
+            if (profileError) {
+                if (profileError.message?.includes('aborted')) {
+                    setError('Connection interrupted. Please click submit again.');
+                    setLoading(false);
+                    return;
+                }
+                throw profileError;
+            }
 
             setSuccess(true);
         } catch (err: any) {
