@@ -35,6 +35,10 @@ export const useAuthStore = create<AuthState>((set) => ({
         isInitializing = true;
 
         try {
+            // Small delay to allow the browser and Supabase internal client to settle 
+            // before acquiring the storage lock. This avoids the "signal aborted" error during initial load.
+            await new Promise(resolve => setTimeout(resolve, 300));
+
             console.log('🔄 Initializing Auth Store...');
 
             // Fetch current session

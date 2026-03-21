@@ -9,5 +9,9 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
         persistSession: true,
         detectSessionInUrl: true,
         storageKey: 'tarzify-auth',
+        flowType: 'pkce', // More modern and stable flow
     },
+    global: {
+        fetch: (...args) => fetch(...args), // Explicitly use global fetch to avoid signal conflicts
+    }
 });
