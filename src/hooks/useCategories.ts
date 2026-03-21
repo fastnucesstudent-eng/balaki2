@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { useToastStore } from '../stores/useToastStore';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 
 export interface Category {
     id: number;
@@ -14,28 +14,24 @@ const FALLBACK_CATEGORIES: Category[] = [
 ];
 
 export const useCategories = () => {
-    const [categories, setCategories] = useState<Category[]>([]);
-    const [loading, setLoading] = useState(true);
+    const queryClient = useQueryClient();
     const toast = useToastStore();
 
-    const fetchCategories = async () => {
-        setLoading(true);
-        try {
+    const { data: categories = FALLBACK_CATEGORIES, isLoading: loading, refetch } = useQuery<Category[]>({
+        queryKey: ['categories'],
+        queryFn: async () => {
             const { data, error } = await supabase
                 .from('categories')
                 .select('*')
                 .order('name');
 
             if (error) throw error;
-            setCategories(data && data.length > 0 ? data : FALLBACK_CATEGORIES);
-        } catch (err: any) {
-            if (err?.name === 'AbortError' || err?.message?.includes('aborted')) return;
-            console.error('Error fetching categories:', err);
-            setCategories(FALLBACK_CATEGORIES);
-        } finally {
-            setLoading(false);
-        }
-    };
+            return data && data.length > 0 ? data : FALLBACK_CATEGORIES;
+        },
+        initialData: FALLBACK_CATEGORIES,
+        // Error handling fallback is handled by the default value in destructuring if needed, 
+        // but throw here allows TanStack Query to retry.
+    });
 
     const addCategory = async (name: string, image_url?: string) => {
         try {
@@ -46,7 +42,7 @@ export const useCategories = () => {
                 .single();
 
             if (error) throw error;
-            setCategories(prev => [...prev, data].sort((a, b) => a.name.localeCompare(b.name)));
+            await queryClient.invalidateQueries({ queryKey: ['categories'] });
             toast.show('Category added successfully', 'success');
             return data;
         } catch (err: any) {
@@ -66,7 +62,7 @@ export const useCategories = () => {
                 .single();
 
             if (error) throw error;
-            setCategories(prev => prev.map(c => c.id === id ? data : c));
+            await queryClient.invalidateQueries({ queryKey: ['categories'] });
             toast.show('Category updated successfully', 'success');
             return data;
         } catch (err: any) {
@@ -84,7 +80,7 @@ export const useCategories = () => {
                 .eq('id', id);
 
             if (error) throw error;
-            setCategories(prev => prev.filter(c => c.id !== id));
+            await queryClient.invalidateQueries({ queryKey: ['categories'] });
             toast.show('Category removed', 'success');
             return true;
         } catch (err: any) {
@@ -94,9 +90,5 @@ export const useCategories = () => {
         }
     };
 
-    useEffect(() => {
-        fetchCategories();
-    }, []);
-
-    return { categories, loading, refetch: fetchCategories, addCategory, updateCategory, deleteCategory };
+    return { categories, loading, refetch, addCategory, updateCategory, deleteCategory };
 };
