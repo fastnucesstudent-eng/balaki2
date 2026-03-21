@@ -47,9 +47,25 @@ export const CartDrawer = ({ isOpen, onClose }: CartDrawerProps) => {
 
                         <div className="flex-grow overflow-y-auto p-6 space-y-6">
                             {items.length === 0 ? (
-                                <div className="h-full flex flex-col items-center justify-center text-center opacity-30">
-                                    <ShoppingBag className="w-20 h-20 mb-4" />
-                                    <p className="text-xl font-medium">Your cart is empty</p>
+                                <div className="h-full flex flex-col items-center justify-center p-8 space-y-6">
+                                    <div className="relative">
+                                        <div className="absolute inset-0 bg-primary/20 rounded-full blur-3xl animate-pulse" />
+                                        <div className="relative w-32 h-32 bg-foreground/5 rounded-full flex items-center justify-center border-2 border-primary/10">
+                                            <ShoppingBag className="w-12 h-12 text-primary opacity-50" />
+                                        </div>
+                                    </div>
+                                    <div className="space-y-2 text-center">
+                                        <p className="text-2xl font-black italic tracking-tighter uppercase">Your Bag is Empty</p>
+                                        <p className="text-sm text-foreground/40 font-medium max-w-[200px] mx-auto">
+                                            Discover our latest premium collection and find something you love.
+                                        </p>
+                                    </div>
+                                    <button
+                                        onClick={onClose}
+                                        className="px-8 py-3 bg-foreground text-background dark:bg-white dark:text-black rounded-full font-black text-xs uppercase tracking-widest hover:scale-105 transition-transform"
+                                    >
+                                        Start Shopping
+                                    </button>
                                 </div>
                             ) : (
                                 items.map((item) => (

@@ -1,4 +1,5 @@
 import { motion, type Variants } from 'framer-motion';
+import { Zap } from 'lucide-react';
 
 export const Hero = () => {
 
@@ -82,6 +83,7 @@ export const Hero = () => {
                     <div className="flex flex-col sm:flex-row items-center justify-center gap-4 w-full px-6 md:px-0">
                         <button
                             onClick={() => {
+                                window.location.hash = '#';
                                 const el = document.getElementById('categories');
                                 if (el) {
                                     el.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -92,6 +94,24 @@ export const Hero = () => {
                             className="w-full sm:w-auto px-8 md:px-10 py-3.5 md:py-5 bg-black dark:bg-white text-white dark:text-black rounded-full font-black text-sm md:text-lg hover:scale-105 transition-transform shadow-[0_15px_40px_rgba(0,0,0,0.1)]"
                         >
                             Shop the Collection
+                        </button>
+
+                        <button
+                            onClick={() => {
+                                if (window.location.hash === '#sale') {
+                                    window.location.hash = '#';
+                                    return;
+                                }
+                                const el = document.getElementById('catalog');
+                                if (el) {
+                                    el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                                    window.location.hash = '#sale';
+                                }
+                            }}
+                            className="sm:hidden w-full flex items-center justify-center gap-2 px-8 py-3.5 bg-primary text-white rounded-full font-black text-sm hover:scale-105 transition-transform shadow-[0_10px_30px_rgba(255,0,0,0.2)] animate-pulse"
+                        >
+                            <Zap className="w-4 h-4" />
+                            {window.location.hash === '#sale' ? 'Show All Products' : 'Flash Sale Live'}
                         </button>
                     </div>
                 </motion.div>

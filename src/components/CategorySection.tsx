@@ -1,7 +1,7 @@
 import { motion } from 'framer-motion';
 import { useCategories } from '../hooks/useCategories';
 import { useProducts } from '../hooks/useProducts';
-import { Loader2, ChevronRight } from 'lucide-react';
+import { Loader2, ChevronRight, ShoppingBag } from 'lucide-react';
 
 export const CategorySection = ({ activeCategory, onCategoryChange }: { activeCategory: string, onCategoryChange: (name: string) => void }) => {
     const { categories, loading: catsLoading } = useCategories();
@@ -112,6 +112,38 @@ export const CategorySection = ({ activeCategory, onCategoryChange }: { activeCa
                         </motion.div>
                     );
                 })}
+
+                {/* PROMINENT USED ITEMS CARD */}
+                <motion.div
+                    variants={itemVariants}
+                    onClick={() => {
+                        window.location.hash = window.location.hash === '#used' ? '#' : '#used';
+                        const catalogEl = document.getElementById('catalog');
+                        if (catalogEl) catalogEl.scrollIntoView({ behavior: 'smooth' });
+                    }}
+                    className="group cursor-pointer"
+                >
+                    <div className={`relative aspect-square rounded-2xl overflow-hidden shadow-xl border transition-all group-hover:scale-[1.03] group-hover:shadow-2xl ${window.location.hash === '#used' ? 'ring-2 ring-accent ring-offset-2 dark:ring-offset-zinc-950 scale-[1.03]' : 'border-accent/10'}`}>
+                        <div className="absolute inset-0 bg-gradient-to-br from-accent/90 to-accent shadow-inner" />
+                        
+                        <div className="absolute inset-0 flex flex-col items-center justify-center p-4 text-center text-white">
+                            <ShoppingBag className="w-8 h-8 mb-2 opacity-50 group-hover:scale-110 transition-transform" />
+                            <span className="text-[12px] sm:text-[14px] font-black uppercase tracking-tight italic leading-none block">
+                                Used Items
+                            </span>
+                            <div className="mt-2 px-2 py-0.5 bg-white/20 rounded-full text-[8px] font-black uppercase tracking-widest">
+                                {window.location.hash === '#used' ? 'Active' : 'Browse'}
+                            </div>
+                        </div>
+
+                        {window.location.hash === '#used' && (
+                            <motion.div 
+                                layoutId="used-active-glow"
+                                className="absolute inset-0 bg-white/10 animate-pulse pointer-events-none"
+                            />
+                        )}
+                    </div>
+                </motion.div>
             </motion.div>
         </section>
     );

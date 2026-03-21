@@ -31,8 +31,7 @@ app.use((req, res, next) => {
         const allowedOrigins = [
             'https://tarzify.com',
             'https://www.tarzify.com',
-            'https://backend.tarzify.com',
-            'http://localhost:5173'
+            'https://backend.tarzify.com'
         ];
 
         if (allowedOrigins.includes(origin) || origin.endsWith('.vercel.app') || (process.env.NODE_ENV !== 'production' && origin.includes('localhost'))) {

@@ -5,7 +5,7 @@ import {
     ShoppingBag, Menu,
     Loader2,
     Clock, CheckCircle2, QrCode, Image as ImageIcon, Upload, Trash2, ExternalLink, Settings, Store,
-    Percent, Tag
+    Percent, Tag, Share2, Copy, Download
 } from 'lucide-react';
 import { useProducts } from '../hooks/useProducts';
 import { supabase } from '../lib/supabase';
@@ -92,6 +92,24 @@ export const MerchantDashboard = () => {
 
     // New Voucher State
     const [showVoucherForm, setShowVoucherForm] = useState(false);
+
+    useEffect(() => {
+        const handleHash = () => {
+            const hash = window.location.hash;
+            if (hash === '#inventory') setActiveTab('inventory');
+            else if (hash === '#used-items') setActiveTab('used');
+            else if (hash === '#orders') setActiveTab('orders');
+            else if (hash === '#performance') setActiveTab('performance');
+            else if (hash === '#carts') setActiveTab('carts');
+            else if (hash === '#banners') setActiveTab('banners');
+            else if (hash === '#vouchers') setActiveTab('vouchers');
+            else if (hash === '#share' || hash === '#qr') setActiveTab('qr');
+            else if (hash === '#profile') setActiveTab('profile');
+        };
+        window.addEventListener('hashchange', handleHash);
+        handleHash(); // Initial check
+        return () => window.removeEventListener('hashchange', handleHash);
+    }, []);
 
     useEffect(() => {
         if (showVoucherForm) {
@@ -924,11 +942,13 @@ export const MerchantDashboard = () => {
                 </div>
                 {[
                     { id: 'inventory', label: 'Inventory', icon: Package },
+                    { id: 'used-inventory', label: 'Used Items', icon: Package },
                     { id: 'orders', label: 'Orders', icon: Truck },
                     { id: 'analytics', icon: BarChart3, label: 'Performance' },
                     { id: 'carts', icon: ShoppingBag, label: 'Customer Carts' },
                     { id: 'banners', icon: ImageIcon, label: 'Banners' },
                     { id: 'vouchers', icon: Tag, label: 'Vouchers' },
+                    { id: 'qr', icon: Share2, label: 'Share Store' },
                 ].map((tab) => (
                     <button key={tab.id} onClick={() => { setActiveTab(tab.id); setShowMobileMenu(false); }} className={`flex items-center gap-4 px-6 py-4 rounded-3xl transition-all ${activeTab === tab.id ? 'bg-primary text-white shadow-2xl hover:scale-105' : 'hover:bg-foreground/5 opacity-40 hover:opacity-100'}`}>
                         <tab.icon className="w-5 h-5" />
@@ -969,9 +989,12 @@ export const MerchantDashboard = () => {
                     )}
                 </div>
 
-                {activeTab === 'inventory' && (
+                {(activeTab === 'inventory' || activeTab === 'used-inventory') && (
                     <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8">
-                        {productsLoading ? [1, 2, 3].map(i => <div key={i} className="h-64 bg-foreground/5 animate-pulse rounded-[3rem]" />) : filteredProducts.map(product => (
+                        {productsLoading ? [1, 2, 3].map(i => <div key={i} className="h-64 bg-foreground/5 animate-pulse rounded-[3rem]" />) : 
+                        filteredProducts
+                            .filter(p => activeTab === 'used-inventory' ? (p as any).is_used : !(p as any).is_used)
+                            .map(product => (
                             <div key={product.id} className="bg-card p-8 rounded-[3rem] border border-border space-y-6 group relative hover:shadow-2xl transition-all">
                                 <div className="flex justify-between items-start">
                                     <div className="w-24 h-24 rounded-3xl overflow-hidden bg-foreground/5">
@@ -985,7 +1008,12 @@ export const MerchantDashboard = () => {
                                     </div>
                                 </div>
                                 <div>
-                                    <p className="text-[10px] font-black uppercase opacity-30 mb-1">{product.category}</p>
+                                    <div className="flex items-center gap-2 mb-1">
+                                        <p className="text-[10px] font-black uppercase opacity-30">{product.category}</p>
+                                        {(product as any).is_used && (
+                                            <span className="text-[9px] font-black bg-accent text-white px-2 py-0.5 rounded-full animate-pulse">USED</span>
+                                        )}
+                                    </div>
                                     <h3 className="text-xl font-black italic uppercase tracking-tighter">{product.name}</h3>
                                 </div>
                                 <div className="flex justify-between pt-4 border-t border-foreground/5">
@@ -1510,68 +1538,139 @@ export const MerchantDashboard = () => {
                             </div>
                         </div>
 
-                        {merchantStatus === 'approved' && (
-                            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                                <div className="lg:col-span-1 bg-card p-10 rounded-[3rem] border border-border shadow-lg flex flex-col items-center justify-center text-center space-y-6">
+
+                    </div>
+                )}
+                {/* QR & SHARE STORE TAB */}
+                {activeTab === 'qr' && (
+                    <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="space-y-10">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6">
+                            <div>
+                                <div className="flex items-center gap-3 mb-2">
+                                    <div className="p-2 bg-primary/10 text-primary rounded-xl">
+                                        <Share2 className="w-6 h-6" />
+                                    </div>
+                                    <h1 className="text-4xl sm:text-5xl font-black tracking-tighter italic uppercase">Share Store</h1>
+                                </div>
+                                <p className="text-lg font-bold text-primary flex items-center gap-2">
+                                    <span className="w-2 h-2 rounded-full bg-primary animate-ping" />
+                                    Your store is live!
+                                    <span className="opacity-40 text-foreground font-medium text-sm ml-2">Customers can now visit your store at:</span>
+                                </p>
+                            </div>
+                            <div className="flex gap-2">
+                                <button 
+                                    onClick={() => setActiveTab('qr')} 
+                                    className="p-4 bg-foreground/5 hover:bg-foreground/10 rounded-2xl transition-all border border-foreground/5 group"
+                                    title="View QR Code"
+                                >
+                                    <QrCode className="w-6 h-6 opacity-40 group-hover:opacity-100 group-hover:text-primary transition-all" />
+                                </button>
+                            </div>
+                        </div>
+
+                        {merchantStatus !== 'approved' ? (
+                            <div className="bg-amber-500/10 border border-amber-500/20 rounded-[2.5rem] p-10 text-center space-y-4">
+                                <QrCode className="w-12 h-12 text-amber-500 mx-auto opacity-60" />
+                                <p className="font-black uppercase tracking-widest text-amber-500">Store Not Yet Approved</p>
+                                <p className="text-sm opacity-50">Your QR code and store link will be available once your store is approved by admin.</p>
+                            </div>
+                        ) : (
+                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-stretch">
+                                {/* QR Code Card */}
+                                <div className="bg-white p-10 sm:p-14 rounded-[3rem] border border-black/5 shadow-2xl flex flex-col items-center justify-center text-center space-y-8 h-full">
                                     <div className="relative group">
-                                        <div className="w-48 h-48 bg-white p-4 rounded-3xl shadow-inner border border-foreground/5 relative overflow-hidden">
+                                        <div className="w-56 h-56 sm:w-64 sm:h-64 bg-white p-4 rounded-[3rem] shadow-[0_20px_50_rgba(0,0,0,0.1)] border border-black/5 relative overflow-hidden flex items-center justify-center">
                                             {qrCodeUrl ? (
-                                                <img src={qrCodeUrl} alt="Store QR Code" className="w-full h-full object-contain" />
+                                                <img src={qrCodeUrl} alt="Store QR Code" className="w-full h-full object-contain p-2" />
                                             ) : (
                                                 <div className="w-full h-full flex flex-col items-center justify-center opacity-20">
-                                                    <QrCode className="w-12 h-12 mb-2" />
+                                                    <QrCode className="w-16 h-16 mb-3" />
                                                     <p className="text-[10px] font-black uppercase">Generating...</p>
                                                 </div>
                                             )}
                                         </div>
-                                        {qrCodeUrl && (
-                                            <a 
-                                                href={qrCodeUrl} 
-                                                download 
-                                                className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white rounded-3xl font-black uppercase italic text-xs"
-                                            >
-                                                Download QR
-                                            </a>
-                                        )}
                                     </div>
-                                    <div>
-                                        <h4 className="text-xl font-black italic uppercase tracking-tighter">Store QR Code</h4>
-                                        <p className="text-xs opacity-50 mt-1 font-medium italic">Customers can scan this to visit your store directly.</p>
+                                    <div className="space-y-2">
+                                        <h3 className="text-2xl font-black italic uppercase tracking-tighter text-foreground">Store QR Code</h3>
+                                        <p className="text-sm opacity-50 font-medium leading-relaxed max-w-[220px] mx-auto">Customers scan this to visit your store directly.</p>
                                     </div>
+                                    {qrCodeUrl && (
+                                        <a
+                                            href={qrCodeUrl}
+                                            download="store-qr.png"
+                                            className="w-full flex items-center justify-center gap-3 py-4 bg-foreground/5 hover:bg-foreground/10 rounded-2xl font-black uppercase text-xs tracking-widest transition-all border border-foreground/5 mt-4"
+                                        >
+                                            <Download className="w-4 h-4" />
+                                            Download QR
+                                        </a>
+                                    )}
                                 </div>
 
-                                <div className="lg:col-span-2 bg-primary/5 p-10 rounded-[3rem] border border-primary/10 shadow-lg flex flex-col justify-center space-y-8 relative overflow-hidden">
+                                {/* Link Sharing Card */}
+                                <div className="bg-primary/5 p-8 sm:p-12 rounded-[3rem] border border-primary/10 shadow-lg flex flex-col justify-center space-y-8 relative overflow-hidden">
                                     <div className="absolute -right-20 -top-20 w-64 h-64 bg-primary/10 rounded-full blur-[100px]" />
-                                    
+
                                     <div className="space-y-4 relative">
                                         <div className="flex items-center gap-3">
                                             <div className="p-3 bg-primary text-white rounded-2xl">
-                                                <ExternalLink className="w-6 h-6" />
+                                                <Share2 className="w-6 h-6" />
                                             </div>
-                                            <h3 className="text-2xl font-black italic uppercase tracking-tighter">Global Presence</h3>
+                                            <h3 className="text-2xl font-black italic uppercase tracking-tighter">Your Store Link</h3>
                                         </div>
-                                        <p className="text-sm opacity-60 font-medium max-w-md">Your store is live and accessible via a unique URL. Share this link on social media to drive traffic directly to your products.</p>
+                                        <p className="text-sm opacity-60 font-medium">Share this link on WhatsApp, Instagram, or anywhere to drive customers directly to your store.</p>
                                     </div>
 
-                                    <div className="flex flex-col sm:flex-row items-center gap-4 relative">
-                                        <div className="flex-grow w-full glass bg-background/50 border-white/10 rounded-2xl p-4 px-6 font-mono text-sm opacity-60 truncate">
+                                    <div className="space-y-4 relative">
+                                        <div className="w-full bg-background/60 border border-foreground/10 rounded-2xl p-4 px-6 pr-12 font-mono text-sm opacity-70 break-all relative group/link">
                                             {window.location.origin}/#store/{storeSlug}
+                                            <QrCode className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 opacity-20 group-hover/link:opacity-100 transition-opacity" />
                                         </div>
-                                        <button 
-                                            onClick={() => {
-                                                navigator.clipboard.writeText(`${window.location.origin}/#store/${storeSlug}`);
-                                                toast.show('Store link copied!', 'success');
-                                            }}
-                                            className="w-full sm:w-auto bg-primary text-white font-black px-8 py-4 rounded-2xl uppercase italic tracking-tighter shadow-xl shadow-primary/20 hover:scale-105 active:scale-95 transition-all text-sm whitespace-nowrap"
-                                        >
-                                            Copy Link
-                                        </button>
+                                        <div className="flex flex-col sm:flex-row gap-3">
+                                            <button
+                                                onClick={() => {
+                                                    navigator.clipboard.writeText(`${window.location.origin}/#store/${storeSlug}`);
+                                                    toast.show('Store link copied!', 'success');
+                                                }}
+                                                className="flex-1 flex items-center justify-center gap-2 bg-primary text-white font-black px-6 py-4 rounded-2xl uppercase italic tracking-tighter shadow-xl shadow-primary/20 hover:scale-105 active:scale-95 transition-all text-sm"
+                                            >
+                                                <Copy className="w-4 h-4" />
+                                                Copy Link
+                                            </button>
+                                            <button
+                                                onClick={async () => {
+                                                    const shareUrl = `${window.location.origin}/#store/${storeSlug}`;
+                                                    if (navigator.share) {
+                                                        try { await navigator.share({ title: 'Visit my store!', url: shareUrl }); } catch {}
+                                                    } else {
+                                                        navigator.clipboard.writeText(shareUrl);
+                                                        toast.show('Link copied!', 'success');
+                                                    }
+                                                }}
+                                                className="flex-1 flex items-center justify-center gap-2 bg-foreground/10 hover:bg-foreground/20 font-black px-6 py-4 rounded-2xl uppercase italic tracking-tighter text-sm transition-all"
+                                            >
+                                                <Share2 className="w-4 h-4" />
+                                                Share
+                                            </button>
+                                        </div>
                                     </div>
+
+                                    {/* WhatsApp Quick Share */}
+                                    <a
+                                        href={`https://wa.me/?text=${encodeURIComponent(`Check out my store on Tarzify! ${window.location.origin}/#store/${storeSlug}`)}`}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="flex items-center justify-center gap-3 py-4 bg-green-500 text-white rounded-2xl font-black uppercase text-xs tracking-widest hover:scale-105 active:scale-95 transition-all shadow-lg shadow-green-500/20 relative"
+                                    >
+                                        <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+                                        Share on WhatsApp
+                                    </a>
                                 </div>
                             </div>
                         )}
-                    </div>
+                    </motion.div>
                 )}
+
                 {/* STORE PROFILE TAB */}
                 {activeTab === 'profile' && (
                     <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="space-y-12">

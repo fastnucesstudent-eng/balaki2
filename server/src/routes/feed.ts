@@ -155,7 +155,7 @@ router.get('/', async (req, res) => {
                 xml += `<description><![CDATA[${product.description || product.name}]]></description>`;
                 xml += `<link>${baseUrl}/#product/${product.sku || product.id}</link>`;
                 xml += `<g:image_link>${product.image_url}</g:image_link>`;
-                xml += `<g:condition>new</g:condition>`;
+                xml += `<g:condition>${product.is_used ? 'used' : 'new'}</g:condition>`;
                 xml += `<g:availability>${product.stock > 0 ? 'in stock' : 'out of stock'}</g:availability>`;
 
                 // Price logic

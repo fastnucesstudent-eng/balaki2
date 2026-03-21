@@ -4,7 +4,24 @@ import { HeroBanner } from '../components/HeroBanner';
 import { CategorySection } from '../components/CategorySection';
 import { MerchantSection } from '../components/MerchantSection';
 import { ProductCard } from '../components/ProductCard';
-import { ChevronRight, ChevronLeft, Search } from 'lucide-react';
+import { ProductSkeleton } from '../components/Skeleton';
+import { ChevronRight, ChevronLeft, Search, Tag } from 'lucide-react';
+import { motion } from 'framer-motion';
+
+const containerVariants = {
+    hidden: { opacity: 0 },
+    visible: {
+        opacity: 1,
+        transition: {
+            staggerChildren: 0.05
+        }
+    }
+};
+
+const itemVariants = {
+    hidden: { opacity: 0, y: 20 },
+    visible: { opacity: 1, y: 0 }
+};
 
 interface StoreFrontProps {
     products: any[];
@@ -16,6 +33,8 @@ interface StoreFrontProps {
     cardWidth: number;
     onAddToCart: () => void;
     onQuickView: (product: any) => void;
+    isUsedOnly?: boolean;
+    isSaleOnly?: boolean;
 }
 
 export const StoreFront: React.FC<StoreFrontProps> = ({
@@ -27,25 +46,18 @@ export const StoreFront: React.FC<StoreFrontProps> = ({
     onSearch,
     cardWidth,
     onAddToCart,
-    onQuickView
+    onQuickView,
+    isUsedOnly,
+    isSaleOnly
 }) => {
-    // Local state for immediate input feedback
     const [localSearchQuery, setLocalSearchQuery] = React.useState(searchQuery);
+    const [displayLimit, setDisplayLimit] = React.useState(12);
 
     // Sync local state when parent searchQuery changes (e.g. from Navbar)
     React.useEffect(() => {
         setLocalSearchQuery(searchQuery);
+        setDisplayLimit(12); // Reset limit on search
     }, [searchQuery]);
-
-    // Debounce search update to parent
-    React.useEffect(() => {
-        const timer = setTimeout(() => {
-            if (localSearchQuery !== searchQuery) {
-                onSearch(localSearchQuery);
-            }
-        }, 300);
-        return () => clearTimeout(timer);
-    }, [localSearchQuery, onSearch, searchQuery]);
 
     // Memoized filtering to prevent recalculation on every render
     const filteredProducts = useMemo(() => {
@@ -60,6 +72,20 @@ export const StoreFront: React.FC<StoreFrontProps> = ({
             return matchesSearch && matchesCategory;
         });
     }, [products, searchQuery, activeCategory]);
+
+    const displayProducts = useMemo(() => {
+        return activeCategory === 'All' ? filteredProducts : filteredProducts.slice(0, displayLimit);
+    }, [filteredProducts, activeCategory, displayLimit]);
+
+    // Debounce search update to parent
+    React.useEffect(() => {
+        const timer = setTimeout(() => {
+            if (localSearchQuery !== searchQuery) {
+                onSearch(localSearchQuery);
+            }
+        }, 300);
+        return () => clearTimeout(timer);
+    }, [localSearchQuery, onSearch, searchQuery]);
 
     // Memoized grouping
     const groupedProducts = useMemo(() => {
@@ -115,10 +141,16 @@ export const StoreFront: React.FC<StoreFrontProps> = ({
                     <div>
                         <div className="flex items-center justify-between mb-6">
                             <div className="flex items-center gap-3">
-                                <span className="block w-1 h-6 md:h-7 bg-primary rounded-full" />
-                                <h2 className="text-base md:text-xl font-black text-gray-900 dark:text-white uppercase tracking-tight">
-                                    {activeCategory}
+                                <span className="block w-1 h-6 md:h-7 bg-primary rounded-full transition-all group-hover:h-8" />
+                                <h2 className="text-base md:text-xl font-black text-gray-900 dark:text-white uppercase tracking-tight flex items-center gap-2">
+                                    {isSaleOnly && <Tag className="w-5 h-5 text-primary animate-bounce-slow" />}
+                                    {isSaleOnly ? 'Flash Sale' : isUsedOnly ? 'Pre-loved Items' : activeCategory}
                                 </h2>
+                                {(isSaleOnly || isUsedOnly) && (
+                                    <span className="px-3 py-1 bg-primary/10 text-primary text-[10px] font-black uppercase tracking-widest rounded-full border border-primary/20">
+                                        {isSaleOnly ? 'Discounts' : 'Second Hand'}
+                                    </span>
+                                )}
                                 <span className="text-xs text-gray-400 font-bold">({filteredProducts.length} products)</span>
                             </div>
                             <button
@@ -129,20 +161,45 @@ export const StoreFront: React.FC<StoreFrontProps> = ({
                             </button>
                         </div>
 
-                        {filteredProducts.length === 0 ? (
+                        {loading ? (
+                            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-5">
+                                {[...Array(8)].map((_, i) => (
+                                    <ProductSkeleton key={i} />
+                                ))}
+                            </div>
+                        ) : displayProducts.length === 0 ? (
                             <div className="text-center py-24 glass rounded-[3rem] opacity-30 font-black uppercase italic tracking-[0.3em] text-2xl">
                                 No Products Found
                             </div>
                         ) : (
-                            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-5">
-                                {filteredProducts.map(product => (
-                                    <ProductCard
-                                        key={product.id}
-                                        product={product}
-                                        onAddToCart={onAddToCart}
-                                        onQuickView={onQuickView}
-                                    />
-                                ))}
+                            <div className="space-y-12">
+                                <motion.div 
+                                    variants={containerVariants}
+                                    initial="hidden"
+                                    animate="visible"
+                                    className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-5"
+                                >
+                                    {displayProducts.map(product => (
+                                        <motion.div key={product.id} variants={itemVariants}>
+                                            <ProductCard
+                                                product={product}
+                                                onAddToCart={onAddToCart}
+                                                onQuickView={onQuickView}
+                                            />
+                                        </motion.div>
+                                    ))}
+                                </motion.div>
+                                
+                                {filteredProducts.length > displayLimit && (
+                                    <div className="flex justify-center pt-8">
+                                        <button
+                                            onClick={() => setDisplayLimit(prev => prev + 12)}
+                                            className="px-8 py-4 bg-white dark:bg-zinc-900 border border-foreground/10 rounded-2xl font-black uppercase tracking-widest text-xs hover:bg-primary hover:text-white hover:border-primary transition-all shadow-lg active:scale-95"
+                                        >
+                                            Load More Products
+                                        </button>
+                                    </div>
+                                )}
                             </div>
                         )}
                     </div>
@@ -184,7 +241,7 @@ export const StoreFront: React.FC<StoreFrontProps> = ({
                                                 id={sliderId}
                                                 className="flex flex-nowrap gap-2 md:gap-3 overflow-x-auto no-scrollbar scroll-smooth pb-1"
                                             >
-                                                {catProducts.map((product) => (
+                                                {catProducts.slice(0, 12).map((product) => (
                                                     <div
                                                         key={product.id}
                                                         className="flex-shrink-0"

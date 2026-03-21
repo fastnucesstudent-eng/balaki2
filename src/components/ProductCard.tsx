@@ -1,6 +1,6 @@
 import { motion } from 'framer-motion';
 import { ShoppingCart, Star } from 'lucide-react';
-import { useState } from 'react';
+import { useState, memo } from 'react';
 import { useCartStore } from '../stores/useCartStore';
 import { useToastStore } from '../stores/useToastStore';
 import { generateProductURL } from '../lib/slugify';
@@ -11,10 +11,11 @@ interface ProductCardProps {
     product: any;
     onAddToCart: (product: any) => void;
     onQuickView?: (product: any) => void;
+    storeSlug?: string;
 }
 
-export const ProductCard = ({ product, onAddToCart, onQuickView }: ProductCardProps) => {
-    const { name, price, image, image_url, category, stock = 1, sku, image_urls = [], compare_at_price, avg_rating, pricing_matrix, sale_percentage = 0, is_free_delivery = false, total_reviews, dynamic_attributes } = product;
+export const ProductCard = memo(({ product, onAddToCart, onQuickView, storeSlug }: ProductCardProps) => {
+    const { name, price, image, image_url, category, stock = 1, sku, image_urls = [], compare_at_price, avg_rating, pricing_matrix, sale_percentage = 0, is_free_delivery = false, total_reviews, dynamic_attributes, is_used = false } = product;
     const finalImage = image || image_url;
     const addItem = useCartStore((state) => state.addItem);
     const toast = useToastStore();
@@ -64,9 +65,12 @@ export const ProductCard = ({ product, onAddToCart, onQuickView }: ProductCardPr
         <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
             whileInView={{ opacity: 1, scale: 1 }}
-            viewport={{ once: true }}
+            viewport={{ once: true, margin: "100px" }}
             whileHover={{ y: -4 }}
-            onClick={() => { window.location.hash = '#' + generateProductURL(name, sku); }}
+            onClick={() => { 
+                const baseUrl = generateProductURL(name, sku);
+                window.location.hash = '#' + baseUrl + (storeSlug ? `?store=${storeSlug}` : '');
+            }}
             className={`group relative bg-white dark:bg-zinc-900/40 rounded-[2rem] md:rounded-[2.5rem] overflow-hidden border border-gray-100 dark:border-white/5 flex flex-col h-full cursor-pointer hover:shadow-2xl transition-all duration-500 ${isOOS ? 'opacity-90' : ''}`}
         >
             {/* Image Section - Full bleed square on mobile */}
@@ -84,9 +88,14 @@ export const ProductCard = ({ product, onAddToCart, onQuickView }: ProductCardPr
                         </div>
                     )}
                     {is_free_delivery && (
-                        <div className="bg-green-500 text-white text-[6px] md:text-[8px] font-black px-1.5 md:px-2 py-0.5 rounded-full uppercase tracking-tighter flex items-center gap-0.5 shadow-lg">
+                        <div className="bg-green-500 text-white text-[6px] md:text-[8px] font-black px-1.5 md:px-2 py-0.5 rounded-full uppercase tracking-tighter flex items-center gap-0.5 shadow-lg border border-white/20">
                             <span className="w-1 h-1 bg-white rounded-full animate-pulse" />
                             Free Delivery
+                        </div>
+                    )}
+                    {is_used && (
+                        <div className="bg-accent text-white text-[7px] md:text-[9px] font-black px-2 md:px-3 py-1 rounded-full uppercase tracking-tighter shadow-lg border border-white/20 animate-pulse">
+                            USED
                         </div>
                     )}
                 </div>
@@ -94,6 +103,7 @@ export const ProductCard = ({ product, onAddToCart, onQuickView }: ProductCardPr
                 <img
                     src={mainImageError ? PLACEHOLDER_IMAGE : (finalImage || PLACEHOLDER_IMAGE)}
                     alt={name}
+                    loading="lazy"
                     onError={() => setMainImageError(true)}
                     className={`w-full h-full object-cover transition-transform duration-700 group-hover:scale-110 ${(image_urls?.length ?? 0) > 1 ? 'group-hover:opacity-0' : ''}`}
                 />
@@ -102,6 +112,7 @@ export const ProductCard = ({ product, onAddToCart, onQuickView }: ProductCardPr
                     <img
                         src={secondaryImageError ? PLACEHOLDER_IMAGE : image_urls![1]}
                         alt={name}
+                        loading="lazy"
                         onError={() => setSecondaryImageError(true)}
                         className="absolute inset-0 w-full h-full object-cover opacity-0 group-hover:opacity-100 transition-all duration-700 scale-110 group-hover:scale-100"
                     />
@@ -150,4 +161,6 @@ export const ProductCard = ({ product, onAddToCart, onQuickView }: ProductCardPr
             </div>
         </motion.div>
     );
-};
+});
+
+ProductCard.displayName = 'ProductCard';

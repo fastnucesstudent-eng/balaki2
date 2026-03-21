@@ -31,7 +31,10 @@ export interface Product {
     pricing_matrix?: any[];
     sale_percentage?: number;
     is_free_delivery?: boolean;
+    is_used?: boolean;
+    condition_note?: string;
     merchant_name?: string;
+    merchant_contact?: string;
 }
 
 interface ProductState {
@@ -81,7 +84,12 @@ export const useProductStore = create<ProductState>((set, get) => ({
             })
             .subscribe();
 
-        return () => { };
+        return () => {
+            if (productsChannel) {
+                productsChannel.unsubscribe();
+                productsChannel = null;
+            }
+        };
     },
 
     fetchProducts: async (force = false, isAdmin = false) => {
@@ -104,7 +112,7 @@ export const useProductStore = create<ProductState>((set, get) => ({
         try {
             const { data, error } = await supabase
                 .from('products')
-                .select('*, reviews(rating), profiles!merchant_id(merchant_status, store_name)')
+                .select('*, profiles!merchant_id(merchant_status, store_name, contact_number)')
                 .is('deleted_at', null)
                 .order('id', { ascending: true });
 
@@ -121,24 +129,14 @@ export const useProductStore = create<ProductState>((set, get) => ({
                     return p.profiles?.merchant_status === 'approved';
                 })
                 .map((p: any) => {
-                    const revs: { rating: number }[] = p.reviews || [];
-                    const manualTotal = Number(p.total_reviews) || 0;
-                    const manualAvg = Number(p.avg_rating) || 0;
-
-                    // Logic: Treat manual as "base" and real reviews as additional
-                    const combinedTotal = manualTotal + revs.length;
-                    let combinedAvg = manualAvg;
-
-                    if (revs.length > 0) {
-                        const sumReal = revs.reduce((sum, r) => sum + r.rating, 0);
-                        combinedAvg = (manualAvg * manualTotal + sumReal) / combinedTotal;
-                    }
-
+                    // Use database columns directly as they are more performant
+                    // Recalculation is only needed if columns are missing
                     return { 
                         ...p, 
-                        avg_rating: combinedAvg, 
-                        total_reviews: combinedTotal,
-                        merchant_name: p.profiles?.store_name || 'Tarzify'
+                        avg_rating: Number(p.avg_rating) || 0, 
+                        total_reviews: Number(p.total_reviews) || 0,
+                        merchant_name: p.profiles?.store_name || 'Tarzify',
+                        merchant_contact: p.profiles?.contact_number
                     };
                 });
 

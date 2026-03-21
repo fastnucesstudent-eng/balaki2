@@ -61,6 +61,10 @@ function App() {
     const [trackOrderId, setTrackOrderId] = useState<string | null>(null);
     const [showPolicy, setShowPolicy] = useState<'privacy' | 'returns' | 'shipping' | 'terms' | null>(null);
     const [viewProductId, setViewProductId] = useState<number | null>(null);
+    const [showUsedOnly, setShowUsedOnly] = useState(false);
+    const [showSaleOnly, setShowSaleOnly] = useState(false);
+    const [productStoreSlug, setProductStoreSlug] = useState<string | null>(null);
+    const [merchantStoreSlug, setMerchantStoreSlug] = useState<string | null>(null);
     const [searchQuery, setSearchQuery] = useState('');
     const [activeCategory, setActiveCategory] = useState('All');
     const [showResetPassword, setShowResetPassword] = useState(false);
@@ -68,7 +72,6 @@ function App() {
     const [rateProductParams, setRateProductParams] = useState<any>(null);
     const [quickViewProduct, setQuickViewProduct] = useState<any>(null);
     const [showMerchantRegister, setShowMerchantRegister] = useState(false);
-    const [merchantStoreSlug, setMerchantStoreSlug] = useState<string | null>(null);
 
     // Pixel-based card width calculation
     const getCardWidth = () => {
@@ -155,6 +158,18 @@ function App() {
             setShowCheckout(hash === '#checkout');
             setShowProfile(hash === '#profile');
             setShowMerchantRegister(hash === '#merchant-register');
+            setShowUsedOnly(hash === '#used');
+            setShowSaleOnly(hash === '#sale');
+
+            if (['#used', '#sale', '#catalog', '#merchants', '#categories'].some(h => hash.startsWith(h))) {
+                const targetId = (hash === '#used' || hash === '#sale') ? 'catalog' : hash.substring(1).split('?')[0];
+                const el = document.getElementById(targetId);
+                if (el) {
+                    setTimeout(() => {
+                        el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    }, 100);
+                }
+            }
             if (hash.startsWith('#store/')) {
                 setMerchantStoreSlug(hash.replace('#store/', '').split('?')[0]);
             } else {
@@ -197,17 +212,38 @@ function App() {
             }
 
             if (hash.startsWith('#product/')) {
-                const path = hash.replace('#product/', '').split('?')[0].toUpperCase();
+                const parts = hash.split('?');
+                const path = parts[0].replace('#product/', '').toUpperCase();
+                const params = new URLSearchParams(parts[1] || '');
+                setProductStoreSlug(params.get('store'));
+                
                 const matched = products.find(p => path.endsWith(p.sku.toUpperCase()) || path === String(p.id));
                 setViewProductId(matched ? matched.id : null);
             } else {
                 setViewProductId(null);
+                setProductStoreSlug(null); // Also reset productStoreSlug when not on a product page
             }
         };
         window.addEventListener('hashchange', handleHashChange);
         handleHashChange();
         return () => window.removeEventListener('hashchange', handleHashChange);
     }, [role, products]);
+
+    // Auto-scroll to catalog when searching
+    useEffect(() => {
+        if (searchQuery.trim() !== '') {
+            const isFullPage = showAdmin || showMerchant || showCheckout || showProfile || viewProductId || merchantStoreSlug || showTrackOrder || showRateProduct;
+            if (!isFullPage) {
+                const catalogEl = document.getElementById('catalog');
+                if (catalogEl) {
+                    // Small delay to ensure the component is rendered or updated
+                    setTimeout(() => {
+                        catalogEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    }, 100);
+                }
+            }
+        }
+    }, [searchQuery, showAdmin, showMerchant, showCheckout, showProfile, viewProductId, merchantStoreSlug, showTrackOrder, showRateProduct]);
 
     const renderContent = () => {
         if (showPolicy) return <PolicyPage type={showPolicy} />;
@@ -229,7 +265,7 @@ function App() {
                     </div>
                 );
             }
-            return <ProductDetails productId={viewProductId} onBack={() => window.location.hash = ''} onFly={() => setIsCartOpen(true)} />;
+            return <ProductDetails productId={viewProductId} storeSlug={productStoreSlug} onBack={() => window.location.hash = ''} onFly={() => setIsCartOpen(true)} />;
         }
 
         if (showCheckout) {
@@ -244,9 +280,15 @@ function App() {
             return <CheckoutPage onBack={() => window.location.hash = ''} />;
         }
 
+        const displayProducts = showUsedOnly 
+            ? products.filter(p => (p as any).is_used) 
+            : showSaleOnly 
+                ? products.filter(p => ((p.compare_at_price || 0) > p.price) || ((p as any).sale_percentage > 0))
+                : products.filter(p => !(p as any).is_used);
+
         return (
             <StoreFront
-                products={products}
+                products={displayProducts}
                 loading={loading}
                 activeCategory={activeCategory}
                 setActiveCategory={setActiveCategory}
@@ -255,20 +297,30 @@ function App() {
                 cardWidth={cardWidth}
                 onAddToCart={() => setIsCartOpen(true)}
                 onQuickView={setQuickViewProduct}
+                isUsedOnly={showUsedOnly}
+                isSaleOnly={showSaleOnly}
             />
         );
     };
-
     return (
-        <div className="min-h-screen bg-background selection:bg-primary selection:text-white overflow-x-hidden">
+        <div className="min-h-screen bg-background selection:bg-primary selection:text-white flex flex-col">
             <Navbar onCartClick={() => setIsCartOpen(true)} onLoginClick={() => setShowAuth(true)} onSearch={setSearchQuery} onCategoryClick={setActiveCategory} />
             <SEO />
-            <Suspense fallback={<LoadingOverlay />}>
-                {renderContent()}
-            </Suspense>
-            <SeoHiddenLinks />
-            <Articles />
-            <Footer />
+            
+            <main className="flex-1 w-full min-w-0 pt-[80px]">
+                <Suspense fallback={<LoadingOverlay />}>
+                    {renderContent()}
+                </Suspense>
+                
+                {!showAdmin && !showMerchant && (
+                    <>
+                        <SeoHiddenLinks />
+                        <Articles />
+                        <Footer />
+                    </>
+                )}
+            </main>
+
             <CartDrawer isOpen={isCartOpen} onClose={() => setIsCartOpen(false)} />
             {showTrackOrder && <TrackOrder initialOrderId={trackOrderId || undefined} onClose={() => window.location.hash = ''} />}
             {showAuth && !user && <AuthPage onClose={() => setShowAuth(false)} />}

@@ -9,6 +9,7 @@ import { SEO } from '../components/SEO';
 import { useToastStore } from '../stores/useToastStore';
 import { generateProductURL } from '../lib/slugify';
 import { ProductCard } from '../components/ProductCard';
+import { ProductDetailSkeleton } from '../components/Skeleton';
 
 const PLACEHOLDER_IMAGE = 'https://images.unsplash.com/photo-1560393464-5c69a73c5770?q=80&w=800&auto=format&fit=crop';
 
@@ -24,7 +25,7 @@ interface Review {
     profiles?: { full_name: string } | null;
 }
 
-export const ProductDetails = ({ productId, onBack, onFly }: { productId: number; onBack: () => void; onFly: (e: any) => void }) => {
+export const ProductDetails = ({ productId, storeSlug, onBack, onFly }: { productId: number; storeSlug?: string | null; onBack: () => void; onFly: (e: any) => void }) => {
     const { products, loading: productsLoading } = useProducts();
     const { user } = useAuthStore();
     const addItem = useCartStore((state) => state.addItem);
@@ -57,6 +58,7 @@ export const ProductDetails = ({ productId, onBack, onFly }: { productId: number
     // Variants State
     const [selectedVariants, setSelectedVariants] = useState<Record<string, string>>({});
     const [activeVariantData, setActiveVariantData] = useState<any>(null);
+    const [isAdding, setIsAdding] = useState(false);
 
     // Initialize default variants to the first option of each attribute
     useEffect(() => {
@@ -159,6 +161,10 @@ export const ProductDetails = ({ productId, onBack, onFly }: { productId: number
             fetchReviews();
         }
     }, [productId, fetchReviews]);
+
+    if (productsLoading || !product) {
+        return <ProductDetailSkeleton />;
+    }
 
     // --- JSON-LD Structured Data for Google Search ---
     useEffect(() => {
@@ -480,13 +486,16 @@ export const ProductDetails = ({ productId, onBack, onFly }: { productId: number
                     {/* Info Section */}
                     <div className="space-y-8">
                         <div className="space-y-4">
-                            <div className="flex items-center gap-2">
-                                <span className="px-3 py-1 bg-primary/10 text-primary text-[10px] font-black uppercase tracking-widest rounded-full">{product.category}</span>
-                                <div className="flex items-center gap-1 text-yellow-500 scale-90 sm:scale-100 origin-left">
-                                    <Star className="w-3.5 h-3.5 sm:w-4 sm:h-4 fill-current" />
-                                    <span className="text-[10px] sm:text-xs font-black text-foreground">{avgRating} ({totalReviewsCount} Reviews)</span>
+                                <div className="flex flex-wrap items-center gap-2">
+                                    <span className="px-3 py-1 bg-primary/10 text-primary text-[10px] font-black uppercase tracking-widest rounded-full">{product.category}</span>
+                                    {product.is_used && (
+                                        <span className="px-3 py-1 bg-accent text-white text-[10px] font-black uppercase tracking-widest rounded-full animate-pulse whitespace-nowrap">Second Hand / Used</span>
+                                    )}
+                                    <div className="flex items-center gap-1 text-yellow-500 scale-90 sm:scale-100 origin-left ml-auto sm:ml-0">
+                                        <Star className="w-3.5 h-3.5 sm:w-4 sm:h-4 fill-current" />
+                                        <span className="text-[10px] sm:text-xs font-black text-foreground">{avgRating} ({totalReviewsCount} Reviews)</span>
+                                    </div>
                                 </div>
-                            </div>
                             <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-5xl font-bold tracking-tight leading-tight">{product.name}</h1>
                                 <div className="flex flex-col gap-1 sm:gap-2">
                                     <div className="flex items-baseline gap-4">
@@ -522,6 +531,13 @@ export const ProductDetails = ({ productId, onBack, onFly }: { productId: number
                         <p className="text-lg opacity-60 leading-relaxed font-medium">
                             {product.description || `Experience the pinnacle of premium design and performance. This ${product.category.toLowerCase()} is meticulously crafted to meet the highest standards of quality and durability.`}
                         </p>
+
+                        {product.is_used && product.condition_note && (
+                            <div className="p-6 bg-accent/5 border border-accent/20 rounded-[2rem] space-y-2">
+                                <p className="text-[10px] font-black uppercase tracking-widest text-accent">Condition Note</p>
+                                <p className="text-sm font-bold opacity-80 leading-relaxed italic">"{product.condition_note}"</p>
+                            </div>
+                        )}
 
                         {/* Variants UI */}
                         {product.dynamic_attributes && Object.keys(product.dynamic_attributes).length > 0 && (
@@ -631,48 +647,75 @@ export const ProductDetails = ({ productId, onBack, onFly }: { productId: number
                                 </motion.div>
                             )}
 
-                            <div className="flex items-center gap-4">
-                                <div className="flex-grow flex items-center bg-foreground/5 rounded-2xl p-1.5 border border-foreground/5">
+                            <div className="flex flex-col sm:flex-row items-center gap-4">
+                                <div className="w-full sm:flex-grow flex items-center bg-foreground/5 rounded-2xl p-1.5 border border-foreground/5">
                                     <button
                                         onClick={() => handleQuantityChange(-1)}
-                                        className="w-10 h-10 flex items-center justify-center glass rounded-xl hover:scale-105 active:scale-95 transition-all font-black text-xl"
+                                        className="w-8 h-8 flex items-center justify-center glass rounded-xl hover:scale-105 active:scale-95 transition-all font-black text-lg"
                                     >
                                         -
                                     </button>
                                     <div className="flex-grow flex flex-col items-center justify-center">
                                         <span className="text-[8px] font-black uppercase opacity-20 tracking-widest leading-none mb-0.5">Quantity</span>
-                                        <div className="font-black text-lg leading-none">{quantity}</div>
+                                        <div className="font-black text-base md:text-lg leading-none">{quantity}</div>
                                     </div>
                                     <button
                                         onClick={() => handleQuantityChange(1)}
-                                        className="w-10 h-10 flex items-center justify-center glass rounded-xl hover:scale-105 active:scale-95 transition-all font-black text-xl"
+                                        className="w-8 h-8 flex items-center justify-center glass rounded-xl hover:scale-105 active:scale-95 transition-all font-black text-lg"
                                     >
                                         +
                                     </button>
                                 </div>
-                                <button
-                                    onClick={handleShare}
-                                    className="p-5 glass rounded-2xl hover:scale-105 active:scale-95 transition-all hover:bg-primary/5 group"
-                                >
-                                    <Share2 className="w-5 h-5 group-hover:text-primary transition-colors" />
-                                </button>
+                                
+                                <div className="flex items-center gap-2 w-full sm:w-auto">
+                                    {product.merchant_contact && (
+                                        <a
+                                            href={`https://wa.me/${product.merchant_contact.replace(/\D/g, '')}?text=${encodeURIComponent(`Hi! I'm interested in "${product.name}" (${window.location.origin}/#product/${product.slug || `${product.name.replace(/\s+/g, '-').toLowerCase()}-${product.sku}`}). Can you provide more details?`)}`}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="flex-grow sm:flex-grow-0 flex items-center justify-center gap-3 px-6 py-4 bg-[#25D366] text-white rounded-2xl hover:scale-105 active:scale-95 transition-all shadow-lg shadow-green-500/20 group animate-pulse-subtle"
+                                        >
+                                            <MessageCircle className="w-5 h-5 fill-white" />
+                                            <span className="text-[10px] font-black uppercase tracking-widest whitespace-nowrap">For More Information</span>
+                                        </a>
+                                    )}
+
+                                    <button
+                                        onClick={handleShare}
+                                        className="p-4 glass rounded-2xl hover:scale-105 active:scale-95 transition-all hover:bg-primary/5 group"
+                                        title="Share Product"
+                                    >
+                                        <Share2 className="w-5 h-5 group-hover:text-primary transition-colors" />
+                                    </button>
+                                </div>
                             </div>
 
                             <button
                                 onClick={(e) => {
-                                    if (displayStock === 0) return;
+                                    if (displayStock === 0 || isAdding) return;
+                                    setIsAdding(true);
                                     // Make sure we pass the correct price to the cart based on variants
                                     addItem({ ...product, price: displayPrice }, quantity, selectedVariants);
                                     onFly(e);
+                                    setTimeout(() => setIsAdding(false), 1000);
                                 }}
-                                disabled={displayStock === 0}
-                                className={`w-full py-6 transition-all rounded-[2rem] font-black text-xl shadow-2xl flex items-center justify-center gap-3 ${displayStock === 0
+                                disabled={displayStock === 0 || isAdding}
+                                className={`w-full py-6 transition-all rounded-[2rem] font-black text-xl shadow-2xl flex items-center justify-center gap-3 ${displayStock === 0 || isAdding
                                     ? 'bg-foreground/20 text-foreground/40 cursor-not-allowed'
                                     : 'bg-primary text-white shadow-primary/30 hover:scale-[1.02] active:scale-[0.98]'
                                     }`}
                             >
-                                <ShoppingBag className="w-6 h-6" />
-                                {displayStock === 0 ? 'Out of Stock' : 'Add to Cart'}
+                                {isAdding ? (
+                                    <>
+                                        <Loader2 className="w-6 h-6 animate-spin" />
+                                        Adding...
+                                    </>
+                                ) : (
+                                    <>
+                                        <ShoppingBag className="w-6 h-6" />
+                                        {displayStock === 0 ? 'Out of Stock' : 'Add to Cart'}
+                                    </>
+                                )}
                             </button>
                         </div>
 
@@ -804,7 +847,14 @@ export const ProductDetails = ({ productId, onBack, onFly }: { productId: number
             {/* ── Suggested Products ── */}
             {(() => {
                 const suggestions = products
-                    .filter(p => p.category === product.category && p.id !== product.id && p.stock > 0)
+                    .filter(p => {
+                        if (storeSlug && product?.merchant_id) {
+                            // If viewed from a store, show only products from THAT merchant
+                            return p.merchant_id === product.merchant_id && p.id !== product.id && p.stock > 0;
+                        }
+                        // Default global search behavior: filter by category
+                        return p.category === product.category && p.id !== product.id && p.stock > 0;
+                    })
                     .slice(0, 8);
 
                 // Hide section only if products loaded AND there's nothing to show
@@ -816,7 +866,9 @@ export const ProductDetails = ({ productId, onBack, onFly }: { productId: number
                         <div className="flex items-center justify-between mb-8">
                             <div className="flex items-center gap-3">
                                 <span className="block w-1 h-7 bg-primary rounded-full" />
-                                <h2 className="text-2xl md:text-3xl font-black tracking-tighter uppercase italic">You May Also Like</h2>
+                                <h2 className="text-2xl md:text-3xl font-black tracking-tighter uppercase italic">
+                                    {storeSlug ? 'More from this Store' : 'You May Also Like'}
+                                </h2>
                             </div>
                             <div className="flex gap-2">
                                 <button
@@ -847,6 +899,7 @@ export const ProductDetails = ({ productId, onBack, onFly }: { productId: number
                                         <ProductCard
                                             product={p}
                                             onAddToCart={() => onFly({} as any)}
+                                            storeSlug={storeSlug || undefined}
                                         />
                                     </div>
                                 ))

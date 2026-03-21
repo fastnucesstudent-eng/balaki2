@@ -152,9 +152,7 @@ export const Footer = memo(() => {
                             </p>
                             <div className="flex flex-wrap gap-4 pt-2 items-center">
                                 {/* Inline SVG for Visa Logo — Refined Proportions */}
-                                <svg className="h-3.5 w-auto hover:scale-110 transition-all cursor-pointer" viewBox="0 0 444 141" xmlns="http://www.w3.org/2000/svg">
-                                    <path d="M129.537 0l-22.56 141h-34.912L51.527.185c-1.393-.556-3.483-1.485-6.613-1.485H0l.928 2.041c28.718 7.234 47.693 23.364 55.454 44.5 2.784 7.604 5.378 14.84 5.378 21.332 0 4.266-.372 8.718-.372 13.541H96.34L117.859 0h11.678zm102.343 61.64c0-21.703-30.053-22.815-29.867-32.46.185-3.153 3.153-6.492 9.274-7.42 2.968-.371 11.129-.741 20.589 3.525l3.71 1.854 3.339-20.774c-5.564-2.226-12.798-4.266-21.516-4.266-24.113 0-41.177 12.798-41.548 31.16-.371 23.928 33.387 25.411 33.2 37.097-.185 3.524-4.266 7.419-10.758 8.161-8.532.927-16.137-1.484-22.629-4.266l-3.339-1.669-3.71 22.073c6.863 3.153 16.51 5.564 26.524 5.564 25.596 0 42.661-12.798 42.661-31.531l0 .001zM288.75 0l-26.339 141h31.903l26.339-141H288.75zm123.532 0l-25.226 91.065-10.194-46.742c-2.411-12.242-8.347-16.137-18.734-16.508l-55.823-1.669c10.016 4.451 16.137 7.79 20.403 14.468 3.524 5.379 5.379 12.613 6.863 21.887l15.024 72.887 34.162.186L444 0h-31.718z" fill="#2563EB"/>
-                                </svg>
+                                <span className="text-[14px] font-black italic text-[#1A1F71] tracking-tighter hover:scale-110 transition-all cursor-pointer">VISA</span>
                                 <img src="https://upload.wikimedia.org/wikipedia/commons/2/2a/Mastercard-logo.svg" alt="Mastercard" className="h-6 hover:scale-110 transition-all cursor-pointer" />
                                 <div className="flex items-center gap-1.5 cursor-pointer hover:scale-110 transition-all group/p" title="JazzCash Available">
                                     <div className="w-2.5 h-2.5 rounded-full bg-[#f85606] shadow-[0_0_8px_rgba(248,86,6,0.6)]" />
