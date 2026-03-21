@@ -103,10 +103,37 @@ export const MerchantRegistration = ({ onBack }: { onBack: () => void }) => {
         return '';
     };
 
-    const handleNext = () => {
+    const handleNext = async () => {
         const err = validateStep();
         if (err) { setError(err); return; }
         setError('');
+
+        if (step === 1) {
+            setLoading(true);
+            try {
+                const slug = generateSlug(formData.storeName);
+                const { data, error: checkError } = await supabase
+                    .from('profiles')
+                    .select('id')
+                    .eq('store_slug', slug)
+                    .maybeSingle();
+
+                if (checkError) throw checkError;
+                if (data) {
+                    setError('This store name is already taken. Please choose another one.');
+                    setLoading(false);
+                    return;
+                }
+            } catch (err: any) {
+                console.error('Error checking store name:', err);
+                setError('Failed to verify store name availability. Please try again.');
+                setLoading(false);
+                return;
+            } finally {
+                setLoading(false);
+            }
+        }
+
         setStep(s => s + 1);
     };
 
@@ -121,10 +148,14 @@ export const MerchantRegistration = ({ onBack }: { onBack: () => void }) => {
 
             // 1. Check if user already exists or needs signup
             let targetUserId = '';
-            const { data: existingUser } = await supabase.auth.getUser();
+            const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+            
+            if (sessionError) {
+                console.error('Session error:', sessionError);
+            }
 
-            if (existingUser?.user) {
-                targetUserId = existingUser.user.id;
+            if (session?.user) {
+                targetUserId = session.user.id;
             } else {
                 const { data: authData, error: signUpError } = await supabase.auth.signUp({
                     email: formData.email,
@@ -165,7 +196,13 @@ export const MerchantRegistration = ({ onBack }: { onBack: () => void }) => {
 
             setSuccess(true);
         } catch (err: any) {
-            setError(err.message || 'Registration failed. Please try again.');
+            console.error('Submit error:', err);
+            const msg = err.message || '';
+            if (msg.includes('aborted') || err.name === 'AbortError') {
+                setError('Connection interrupted. Please click submit again.');
+            } else {
+                setError(msg || 'Registration failed. Please try again.');
+            }
         } finally {
             setLoading(false);
         }
