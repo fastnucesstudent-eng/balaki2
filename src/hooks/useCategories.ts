@@ -9,15 +9,10 @@ export interface Category {
     created_at: string;
 }
 
-const FALLBACK_CATEGORIES: Category[] = [
-    { id: -1, name: 'General', created_at: new Date().toISOString() },
-];
-
 export const useCategories = () => {
     const queryClient = useQueryClient();
     const toast = useToastStore();
-
-    const { data: categories = FALLBACK_CATEGORIES, isLoading: loading, refetch } = useQuery<Category[]>({
+    const { data: categories = [], isLoading: loading, refetch } = useQuery<Category[]>({
         queryKey: ['categories'],
         queryFn: async () => {
             const { data, error } = await supabase
@@ -26,11 +21,8 @@ export const useCategories = () => {
                 .order('name');
 
             if (error) throw error;
-            return data && data.length > 0 ? data : FALLBACK_CATEGORIES;
+            return data || [];
         },
-        initialData: FALLBACK_CATEGORIES,
-        // Error handling fallback is handled by the default value in destructuring if needed, 
-        // but throw here allows TanStack Query to retry.
     });
 
     const addCategory = async (name: string, image_url?: string) => {

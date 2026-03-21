@@ -293,7 +293,7 @@ export const MerchantDashboard = () => {
 
             // Notify Admin via Email
             try {
-                const notifyRes = await fetch(`${import.meta.env.VITE_API_URL}/banners/notify-admin`, {
+                await fetch(`${import.meta.env.VITE_API_URL}/banners/notify-admin`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
@@ -302,14 +302,8 @@ export const MerchantDashboard = () => {
                         bannerUrl: newBanner.image_url
                     })
                 });
-                const notifyData = await notifyRes.json().catch(() => ({}));
-                if (!notifyRes.ok) {
-                    console.error('Admin notification failed:', notifyRes.status, notifyData);
-                    toast.show('Banner saved but admin email notification failed', 'error');
-                }
             } catch (e) {
-                console.error('Failed to send admin notification email:', e);
-                toast.show('Banner saved but could not send email to admin', 'error');
+                console.error('Failed to send admin notification email', e);
             }
 
             setNewBanner({
