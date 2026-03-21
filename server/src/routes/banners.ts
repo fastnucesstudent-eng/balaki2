@@ -20,12 +20,13 @@ const getTransporter = () => {
 router.post('/notify-admin', async (req, res) => {
     try {
         const { merchantName, merchantEmail, bannerUrl } = req.body;
+        console.log(`Sending banner request email for merchant: ${merchantName} (${merchantEmail})`);
 
         const transporter = getTransporter();
         
-        await transporter.sendMail({
+        const info = await transporter.sendMail({
             from: process.env.SMTP_FROM || `"TARZIFY" <${process.env.SMTP_USER}>`,
-            to: process.env.ADMIN_EMAIL || process.env.SMTP_USER,
+            to: process.env.ADMIN_EMAIL || 'admin@tarzify.com',
             subject: `New Banner Request from ${merchantName}`,
             html: `
                 <div style="font-family: sans-serif; padding: 20px; border: 1px solid #eee; border-radius: 10px;">
@@ -41,10 +42,14 @@ router.post('/notify-admin', async (req, res) => {
             `
         });
 
-        res.json({ success: true });
+        console.log('Admin notification email sent successfully:', info.messageId);
+        res.json({ success: true, messageId: info.messageId });
     } catch (error: any) {
         console.error('Notify Admin Error:', error);
-        res.status(500).json({ error: error.message });
+        res.status(500).json({ 
+            error: 'Failed to send admin notification',
+            details: error.message 
+        });
     }
 });
 
@@ -52,12 +57,13 @@ router.post('/notify-admin', async (req, res) => {
 router.post('/notify-merchant', async (req, res) => {
     try {
         const { merchantEmail, status, adminComment, bannerUrl } = req.body;
+        console.log(`Sending ${status} notification to merchant: ${merchantEmail}`);
 
         const transporter = getTransporter();
         
         const isApproved = status === 'approved';
 
-        await transporter.sendMail({
+        const info = await transporter.sendMail({
             from: process.env.SMTP_FROM || `"TARZIFY" <${process.env.SMTP_USER}>`,
             to: merchantEmail,
             subject: `Banner Request ${isApproved ? 'Approved' : 'Rejected'} - TARZIFY`,
@@ -75,10 +81,14 @@ router.post('/notify-merchant', async (req, res) => {
             `
         });
 
-        res.json({ success: true });
+        console.log('Merchant notification email sent successfully:', info.messageId);
+        res.json({ success: true, messageId: info.messageId });
     } catch (error: any) {
         console.error('Notify Merchant Error:', error);
-        res.status(500).json({ error: error.message });
+        res.status(500).json({ 
+            error: 'Failed to send merchant notification',
+            details: error.message 
+        });
     }
 });
 

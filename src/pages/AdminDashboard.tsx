@@ -1503,7 +1503,16 @@ export const AdminDashboard = () => {
                                                                                     status: 'approved',
                                                                                     bannerUrl: banner.image_url
                                                                                 })
-                                                                            }).catch(console.error);
+                                                                            }).then(async (res) => {
+                                                                                if (!res.ok) {
+                                                                                    const err = await res.json();
+                                                                                    console.error('Merchant notification failed:', err);
+                                                                                    useToastStore.getState().show('Approved, but failed to notify merchant via email', 'info');
+                                                                                }
+                                                                            }).catch(err => {
+                                                                                console.error('Merchant notification fetch error:', err);
+                                                                                useToastStore.getState().show('Email notification failed', 'info');
+                                                                            });
                                                                         }
                                                                     }
                                                                 }}
@@ -1530,7 +1539,16 @@ export const AdminDashboard = () => {
                                                                                     adminComment: comment,
                                                                                     bannerUrl: banner.image_url
                                                                                 })
-                                                                            }).catch(console.error);
+                                                                            }).then(async (res) => {
+                                                                                if (!res.ok) {
+                                                                                    const err = await res.json();
+                                                                                    console.error('Merchant notification failed:', err);
+                                                                                    useToastStore.getState().show('Rejected, but failed to notify merchant via email', 'info');
+                                                                                }
+                                                                            }).catch(err => {
+                                                                                console.error('Merchant notification fetch error:', err);
+                                                                                useToastStore.getState().show('Email notification failed', 'info');
+                                                                            });
                                                                         }
                                                                     }
                                                                 }}
