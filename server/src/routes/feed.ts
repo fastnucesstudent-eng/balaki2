@@ -133,7 +133,7 @@ router.get('/', async (req, res) => {
 
         if (error) throw error;
 
-        const baseUrl = process.env.FRONTEND_URL || 'https://tarzify.com';
+        const baseUrl = (process.env.FRONTEND_URL || 'https://tarzify.com').trim();
 
         let xml = '<?xml version="1.0" encoding="UTF-8"?>';
         xml += '<rss xmlns:g="http://base.google.com/ns/1.0" version="2.0">';
