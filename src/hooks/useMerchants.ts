@@ -1,27 +1,21 @@
-import { useState, useEffect } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { supabase } from '../lib/supabase';
 
 export const useMerchants = () => {
-    const [merchants, setMerchants] = useState<any[]>([]);
-    const [loading, setLoading] = useState(true);
-
-    useEffect(() => {
-        const fetchMerchants = async () => {
-            setLoading(true);
-            const { data } = await supabase
+    const { data: merchants = [], isLoading: loading } = useQuery({
+        queryKey: ['merchants-approved'],
+        queryFn: async () => {
+            const { data, error } = await supabase
                 .from('profiles')
                 .select('*')
                 .eq('role', 'merchant')
                 .eq('merchant_status', 'approved');
 
-            if (data) {
-                setMerchants(data);
-            }
-            setLoading(false);
-        };
-
-        fetchMerchants();
-    }, []);
+            if (error) throw error;
+            return data || [];
+        },
+        staleTime: 1000 * 60 * 5, // 5 minutes
+    });
 
     return { merchants, loading };
 };

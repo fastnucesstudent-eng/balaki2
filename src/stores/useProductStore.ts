@@ -43,6 +43,7 @@ interface ProductState {
     error: string | null;
     lastFetched: number | null;
     fetchProducts: (force?: boolean, isAdmin?: boolean) => Promise<void>;
+    setProducts: (products: Product[]) => void;
     subscribe: () => () => void;
 }
 
@@ -51,6 +52,8 @@ export const useProductStore = create<ProductState>((set, get) => ({
     loading: false,
     error: null,
     lastFetched: null,
+
+    setProducts: (products) => set({ products }),
 
     subscribe: () => {
         if (productsChannel) return () => { };

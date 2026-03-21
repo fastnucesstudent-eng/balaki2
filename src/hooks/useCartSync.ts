@@ -1,50 +1,57 @@
-import { useEffect, useCallback } from 'react';
+import { useEffect } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../lib/supabase';
 import { useCartStore } from '../stores/useCartStore';
 import { useAuthStore } from '../stores/useAuthStore';
 
 export const useCartSync = () => {
+    const queryClient = useQueryClient();
     const user = useAuthStore(state => state.user);
     const setItems = useCartStore(state => state.setItems);
 
-    // Fetch cart from DB on login
-    const fetchDBCart = useCallback(async () => {
-        if (!user) return;
-
-        try {
+    // 1. Fetch cart from DB on login
+    const { data: dbCartData } = useQuery({
+        queryKey: ['cart', user?.id],
+        queryFn: async () => {
+            if (!user) return [];
             const { data, error } = await supabase
                 .from('cart_items')
                 .select('product_id, quantity, products(*)')
                 .eq('user_id', user.id);
 
             if (error) throw error;
+            return data || [];
+        },
+        enabled: !!user,
+        staleTime: 1000 * 60 * 5,
+    });
 
-            if (data && data.length > 0) {
-                const dbItems = data.map((item: any) => ({
-                    ...item.products,
-                    quantity: item.quantity,
-                    image: item.products.image_url
-                }));
-                setItems(dbItems);
-            }
-        } catch (err: any) {
-            console.error('Error fetching DB cart:', err.message || err);
+    // 2. Sync DB cart to local store when data arrives
+    useEffect(() => {
+        if (dbCartData && dbCartData.length > 0) {
+            const dbItems = dbCartData.map((item: any) => ({
+                ...item.products,
+                quantity: item.quantity,
+                image: item.products.image_url
+            }));
+            setItems(dbItems);
         }
-    }, [user, setItems]);
+    }, [dbCartData, setItems]);
 
-    // Sync local changes to DB
-    const syncToDB = useCallback(async (productId: number, quantity: number) => {
-        if (!user) return;
+    // 3. Mutation for syncing local changes to DB
+    const syncMutation = useMutation({
+        mutationFn: async ({ productId, quantity }: { productId: number; quantity: number }) => {
+            if (!user) return;
 
-        try {
             if (quantity <= 0) {
-                await supabase
+                const { error } = await supabase
                     .from('cart_items')
                     .delete()
                     .eq('user_id', user.id)
                     .eq('product_id', productId);
+                if (error) throw error;
             } else {
-                await supabase
+                const { error } = await supabase
                     .from('cart_items')
                     .upsert({
                         user_id: user.id,
@@ -52,16 +59,15 @@ export const useCartSync = () => {
                         quantity: quantity,
                         variant_combo: (useCartStore.getState().items.find(i => i.id === productId) as any)?.variant_combo || {}
                     }, { onConflict: 'user_id,product_id,variant_combo' });
+                if (error) throw error;
             }
-        } catch (err) {
-            console.error('Error syncing cart to DB:', err);
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['cart', user?.id] });
         }
-    }, [user]);
+    });
 
-    // Initial fetch
-    useEffect(() => {
-        if (user) fetchDBCart();
-    }, [user, fetchDBCart]);
-
-    return { syncToDB };
+    return { 
+        syncToDB: (productId: number, quantity: number) => syncMutation.mutate({ productId, quantity }) 
+    };
 };

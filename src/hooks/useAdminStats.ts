@@ -1,18 +1,15 @@
-import { useState, useEffect } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { supabase } from '../lib/supabase';
 
 export const useAdminStats = () => {
-    const [stats, setStats] = useState({
+    const { data: stats = {
         totalRevenue: 0,
         totalOrders: 0,
         totalCustomers: 0,
         activeProducts: 0
-    });
-    const [loading, setLoading] = useState(true);
-
-    const fetchStats = async () => {
-        setLoading(true);
-        try {
+    }, isLoading: loading, refetch } = useQuery({
+        queryKey: ['admin-stats'],
+        queryFn: async () => {
             // Run all queries in parallel for maximum speed
             const [ordersRes, customersRes, productsRes] = await Promise.all([
                 supabase.from('orders').select('total_amount'),
@@ -27,22 +24,15 @@ export const useAdminStats = () => {
             const totalRevenue = ordersRes.data?.reduce((sum, order) => sum + Number(order.total_amount), 0) || 0;
             const totalOrders = ordersRes.data?.length || 0;
 
-            setStats({
+            return {
                 totalRevenue,
                 totalOrders,
                 totalCustomers: customersRes.count || 0,
                 activeProducts: productsRes.count || 0
-            });
-        } catch (err) {
-            console.error('Error fetching admin stats:', err);
-        } finally {
-            setLoading(false);
-        }
-    };
+            };
+        },
+        staleTime: 1000 * 60 * 5, // 5 minutes
+    });
 
-    useEffect(() => {
-        fetchStats();
-    }, []);
-
-    return { stats, loading, refetch: fetchStats };
+    return { stats, loading, refetch };
 };
