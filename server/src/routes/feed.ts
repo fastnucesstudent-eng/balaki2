@@ -150,7 +150,7 @@ router.get('/', async (req, res) => {
                 const googleCategory = getGoogleCategory(product.category || '');
 
                 const encodedId = encodeURIComponent(product.sku || product.id);
-                const encodedLink = `${baseUrl}/#product/${encodedId}`;
+                const encodedLink = `${baseUrl}/?product=${encodedId}`;
                 const encodedImageUrl = product.image_url ? product.image_url.replace(/ /g, '%20') : '';
 
                 xml += '<item>';
@@ -162,6 +162,7 @@ router.get('/', async (req, res) => {
                 xml += `<g:condition>${product.is_used ? 'used' : 'new'}</g:condition>`;
                 xml += `<g:availability>${product.stock > 0 ? 'in stock' : 'out of stock'}</g:availability>`;
                 xml += `<g:identifier_exists>no</g:identifier_exists>`;
+                xml += `<g:adult>no</g:adult>`;
 
                 // Price logic
                 if (originalPrice && originalPrice > currentPrice) {

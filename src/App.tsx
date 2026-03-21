@@ -151,6 +151,16 @@ function App() {
     }, []);
 
     useEffect(() => {
+        // Handle Google Merchant Center links that use standard query parameters instead of hash routing
+        const params = new URLSearchParams(window.location.search);
+        const productParam = params.get('product');
+        if (productParam) {
+            params.delete('product');
+            const remainingSearch = params.toString() ? `?${params.toString()}` : '';
+            window.location.replace(`${window.location.pathname}${remainingSearch}#product/${productParam}`);
+            return;
+        }
+
         const handleHashChange = () => {
             const hash = window.location.hash;
             setShowAdmin(hash === '#admin' && role === 'admin');
