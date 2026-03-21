@@ -149,14 +149,19 @@ router.get('/', async (req, res) => {
                 const brand = product.profiles?.store_name || 'Tarzify';
                 const googleCategory = getGoogleCategory(product.category || '');
 
+                const encodedId = encodeURIComponent(product.sku || product.id);
+                const encodedLink = `${baseUrl}/#product/${encodedId}`;
+                const encodedImageUrl = product.image_url ? product.image_url.replace(/ /g, '%20') : '';
+
                 xml += '<item>';
-                xml += `<g:id>${product.sku || product.id}</g:id>`;
+                xml += `<g:id><![CDATA[${product.sku || product.id}]]></g:id>`;
                 xml += `<title><![CDATA[${product.name}]]></title>`;
                 xml += `<description><![CDATA[${product.description || product.name}]]></description>`;
-                xml += `<link>${baseUrl}/#product/${product.sku || product.id}</link>`;
-                xml += `<g:image_link>${product.image_url}</g:image_link>`;
+                xml += `<link><![CDATA[${encodedLink}]]></link>`;
+                xml += `<g:image_link><![CDATA[${encodedImageUrl}]]></g:image_link>`;
                 xml += `<g:condition>${product.is_used ? 'used' : 'new'}</g:condition>`;
                 xml += `<g:availability>${product.stock > 0 ? 'in stock' : 'out of stock'}</g:availability>`;
+                xml += `<g:identifier_exists>no</g:identifier_exists>`;
 
                 // Price logic
                 if (originalPrice && originalPrice > currentPrice) {
@@ -180,7 +185,8 @@ router.get('/', async (req, res) => {
                 // Additional images
                 if (product.image_urls && Array.isArray(product.image_urls)) {
                     product.image_urls.slice(1, 5).forEach((imgUrl: string) => {
-                        xml += `<g:additional_image_link>${imgUrl}</g:additional_image_link>`;
+                        const encodedAdditionalImg = imgUrl.replace(/ /g, '%20');
+                        xml += `<g:additional_image_link><![CDATA[${encodedAdditionalImg}]]></g:additional_image_link>`;
                     });
                 }
 
