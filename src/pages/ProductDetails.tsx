@@ -849,8 +849,8 @@ export const ProductDetails = ({ productId, storeSlug, onBack, onFly }: { produc
                 const suggestions = products
                     .filter(p => {
                         if (storeSlug && product?.merchant_id) {
-                            // If viewed from a store, show only products from THAT merchant
-                            return p.merchant_id === product.merchant_id && p.id !== product.id && p.stock > 0;
+                            // If viewed from a store, show only products from THAT merchant AND same category
+                            return p.merchant_id === product.merchant_id && p.category === product.category && p.id !== product.id && p.stock > 0;
                         }
                         // Default global search behavior: filter by category
                         return p.category === product.category && p.id !== product.id && p.stock > 0;

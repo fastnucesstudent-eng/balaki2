@@ -21,11 +21,20 @@ router.post('/notify-admin', async (req, res) => {
     try {
         const { merchantName, merchantEmail, bannerUrl } = req.body;
 
+        const adminEmail = process.env.ADMIN_EMAIL || process.env.SMTP_USER;
+        console.log(`[BANNER NOTIFY] Sending notification to admin: ${adminEmail}`);
+        console.log(`[BANNER NOTIFY] From merchant: ${merchantName} (${merchantEmail})`);
+
+        if (!process.env.SMTP_USER || !process.env.SMTP_PASS) {
+            console.error('[BANNER NOTIFY] SMTP_USER or SMTP_PASS not configured!');
+            return res.status(500).json({ error: 'SMTP credentials not configured' });
+        }
+
         const transporter = getTransporter();
         
         await transporter.sendMail({
             from: process.env.SMTP_FROM || `"TARZIFY" <${process.env.SMTP_USER}>`,
-            to: process.env.ADMIN_EMAIL || process.env.SMTP_USER,
+            to: adminEmail,
             subject: `New Banner Request from ${merchantName}`,
             html: `
                 <div style="font-family: sans-serif; padding: 20px; border: 1px solid #eee; border-radius: 10px;">
@@ -41,9 +50,10 @@ router.post('/notify-admin', async (req, res) => {
             `
         });
 
+        console.log(`[BANNER NOTIFY] ✅ Email sent successfully to ${adminEmail}`);
         res.json({ success: true });
     } catch (error: any) {
-        console.error('Notify Admin Error:', error);
+        console.error('[BANNER NOTIFY] ❌ Error:', error.message || error);
         res.status(500).json({ error: error.message });
     }
 });

@@ -9,6 +9,10 @@ export interface Category {
     created_at: string;
 }
 
+const FALLBACK_CATEGORIES: Category[] = [
+    { id: -1, name: 'General', created_at: new Date().toISOString() },
+];
+
 export const useCategories = () => {
     const [categories, setCategories] = useState<Category[]>([]);
     const [loading, setLoading] = useState(true);
@@ -23,11 +27,11 @@ export const useCategories = () => {
                 .order('name');
 
             if (error) throw error;
-            setCategories(data || []);
+            setCategories(data && data.length > 0 ? data : FALLBACK_CATEGORIES);
         } catch (err: any) {
             if (err?.name === 'AbortError' || err?.message?.includes('aborted')) return;
             console.error('Error fetching categories:', err);
-            toast.show('Failed to load categories', 'error');
+            setCategories(FALLBACK_CATEGORIES);
         } finally {
             setLoading(false);
         }
