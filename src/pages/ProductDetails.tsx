@@ -670,7 +670,7 @@ export const ProductDetails = ({ productId, storeSlug, onBack, onFly }: { produc
                                 <div className="flex items-center gap-2 w-full sm:w-auto">
                                     {product.merchant_contact && (
                                         <a
-                                            href={`https://wa.me/${product.merchant_contact.replace(/\D/g, '')}?text=${encodeURIComponent(`Hi! I'm interested in "${product.name}" (${window.location.origin}/#product/${product.slug || `${product.name.replace(/\s+/g, '-').toLowerCase()}-${product.sku}`}). Can you provide more details?`)}`}
+                                            href={`https://wa.me/${product.merchant_contact.replace(/\D/g, '')}?text=${encodeURIComponent(`Hi! I'm interested in "${product.name}" (${window.location.origin}/#${generateProductURL(product.name, product.sku)}). Can you provide more details?`)}`}
                                             target="_blank"
                                             rel="noopener noreferrer"
                                             className="flex-grow sm:flex-grow-0 flex items-center justify-center gap-3 px-6 py-4 bg-[#25D366] text-white rounded-2xl hover:scale-105 active:scale-95 transition-all shadow-lg shadow-green-500/20 group animate-pulse-subtle"
@@ -849,8 +849,8 @@ export const ProductDetails = ({ productId, storeSlug, onBack, onFly }: { produc
                 const suggestions = products
                     .filter(p => {
                         if (storeSlug && product?.merchant_id) {
-                            // If viewed from a store, show only products from THAT merchant
-                            return p.merchant_id === product.merchant_id && p.id !== product.id && p.stock > 0;
+                            // If viewed from a store, show only products from THAT merchant AND same category
+                            return p.merchant_id === product.merchant_id && p.category === product.category && p.id !== product.id && p.stock > 0;
                         }
                         // Default global search behavior: filter by category
                         return p.category === product.category && p.id !== product.id && p.stock > 0;

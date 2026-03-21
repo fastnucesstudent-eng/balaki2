@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-    User, Building2, CreditCard, Tag, ChevronRight, ChevronLeft,
+    User, Building2, Tag, ChevronRight, ChevronLeft,
     Check, Loader2, Store, Eye, EyeOff, AlertCircle, Upload
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
@@ -11,7 +11,6 @@ import { useCategories } from '../hooks/useCategories';
 const STEPS = [
     { id: 'personal', label: 'Personal', icon: User },
     { id: 'business', label: 'Business', icon: Building2 },
-    { id: 'banking', label: 'Banking', icon: CreditCard },
     { id: 'categories', label: 'Categories', icon: Tag },
 ];
 
@@ -27,10 +26,6 @@ interface FormData {
     ntn: string;
     logoUrl: string;
     // Step 3
-    bankAccount: string;
-    bankTitle: string;
-    bankBranchCode: string;
-    // Step 4
     selectedCategories: string[];
 }
 
@@ -47,7 +42,6 @@ export const MerchantRegistration = ({ onBack }: { onBack: () => void }) => {
     const [formData, setFormData] = useState<FormData>({
         fullName: '', email: '', password: '', contactNumber: '',
         storeName: '', businessAddress: '', ntn: '', logoUrl: '',
-        bankAccount: '', bankTitle: '', bankBranchCode: '',
         selectedCategories: [],
     });
 
@@ -104,10 +98,6 @@ export const MerchantRegistration = ({ onBack }: { onBack: () => void }) => {
             if (!formData.businessAddress.trim()) return 'Business address is required.';
         }
         if (step === 2) {
-            if (!formData.bankAccount.trim()) return 'Bank account number is required.';
-            if (!formData.bankTitle.trim()) return 'Account title is required.';
-        }
-        if (step === 3) {
             if (formData.selectedCategories.length === 0) return 'Please select at least one category.';
         }
         return '';
@@ -244,9 +234,6 @@ export const MerchantRegistration = ({ onBack }: { onBack: () => void }) => {
                     business_address: formData.businessAddress,
                     ntn: formData.ntn || null,
                     logo_url: formData.logoUrl || null,
-                    bank_account: formData.bankAccount,
-                    bank_title: formData.bankTitle,
-                    bank_branch_code: formData.bankBranchCode || null,
                     merchant_categories: formData.selectedCategories,
                     merchant_status: 'pending',
                 });
@@ -433,28 +420,9 @@ export const MerchantRegistration = ({ onBack }: { onBack: () => void }) => {
                                     </motion.div>
                                 )}
 
-                                {/* ─── STEP 2: BANKING ─── */}
+                                {/* ─── STEP 2: CATEGORIES ─── */}
                                 {step === 2 && (
                                     <motion.div key="step2" initial={{ x: 30, opacity: 0 }} animate={{ x: 0, opacity: 1 }} exit={{ x: -30, opacity: 0 }} className="space-y-8">
-                                        <div>
-                                            <h2 className="text-2xl font-black tracking-tighter italic uppercase flex items-center gap-2"><CreditCard className="w-6 h-6 text-primary" /> Banking Details</h2>
-                                            <p className="text-sm opacity-40 mt-1">For receiving payouts securely</p>
-                                        </div>
-                                        <div className="p-4 bg-yellow-500/10 rounded-2xl border border-yellow-500/20 flex items-start gap-3">
-                                            <AlertCircle className="w-4 h-4 text-yellow-500 flex-shrink-0 mt-0.5" />
-                                            <p className="text-xs font-medium text-yellow-500">Your banking details are encrypted and only used for payouts. They are never shared publicly.</p>
-                                        </div>
-                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-                                            <InputField label="Account Title *" placeholder="Muhammad Ali" value={formData.bankTitle} onChange={v => update('bankTitle', v)} type="text" className="sm:col-span-2" />
-                                            <InputField label="Bank Account / IBAN *" placeholder="PK36SCBL0000001123456702" value={formData.bankAccount} onChange={v => update('bankAccount', v)} type="text" className="sm:col-span-2" />
-                                            <InputField label="Branch Code (optional)" placeholder="0123" value={formData.bankBranchCode} onChange={v => update('bankBranchCode', v)} type="text" />
-                                        </div>
-                                    </motion.div>
-                                )}
-
-                                {/* ─── STEP 3: CATEGORIES ─── */}
-                                {step === 3 && (
-                                    <motion.div key="step3" initial={{ x: 30, opacity: 0 }} animate={{ x: 0, opacity: 1 }} exit={{ x: -30, opacity: 0 }} className="space-y-8">
                                         <div>
                                             <h2 className="text-2xl font-black tracking-tighter italic uppercase flex items-center gap-2"><Tag className="w-6 h-6 text-primary" /> Product Categories</h2>
                                             <p className="text-sm opacity-40 mt-1">Select all categories you plan to sell in</p>
