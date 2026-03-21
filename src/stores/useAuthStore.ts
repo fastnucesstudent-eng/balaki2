@@ -4,6 +4,7 @@ import type { User } from '@supabase/supabase-js';
 
 // Module-level subscription — prevents listener stacking on every initialize() call
 let authSubscription: { unsubscribe: () => void } | null = null;
+let isInitializing = false;
 
 interface AuthState {
     user: User | null;
@@ -30,6 +31,9 @@ export const useAuthStore = create<AuthState>((set) => ({
         set({ user: null, role: null, merchantStatus: null, storeSlug: null, qrCodeUrl: null });
     },
     initialize: async () => {
+        if (isInitializing) return;
+        isInitializing = true;
+
         try {
             console.log('🔄 Initializing Auth Store...');
 
@@ -53,26 +57,28 @@ export const useAuthStore = create<AuthState>((set) => ({
                     return;
                 }
                 console.error('❌ Session fetch error:', sessionError);
-                throw sessionError;
             }
 
             const fetchProfileData = async (userId: string) => {
                 try {
+                    // Use standard select + limit(1) instead of single() to avoid signal/abort issues
                     const { data, error } = await supabase
                         .from('profiles')
                         .select('role, merchant_status, store_slug, qr_code_url')
                         .eq('id', userId)
-                        .single();
+                        .limit(1);
+
+                    const profile = data?.[0];
 
                     if (error) {
-                        console.warn('⚠️ Profile fetch error (might be first login):', error.message);
+                        console.warn('⚠️ Profile fetch error:', error.message);
                         return { role: 'customer' as const, status: null, slug: null, qr: null };
                     }
                     return { 
-                        role: (data?.role || 'customer') as 'admin' | 'merchant' | 'customer', 
-                        status: data?.merchant_status || null,
-                        slug: data?.store_slug || null,
-                        qr: data?.qr_code_url || null
+                        role: (profile?.role || 'customer') as 'admin' | 'merchant' | 'customer', 
+                        status: profile?.merchant_status || null,
+                        slug: profile?.store_slug || null,
+                        qr: profile?.qr_code_url || null
                     };
                 } catch (e) {
                     console.error('❌ Unexpected error fetching profile:', e);
@@ -114,12 +120,14 @@ export const useAuthStore = create<AuthState>((set) => ({
 
             authSubscription = subscription;
         } catch (err: any) {
-            // Silence AbortErrors as they are normal during component cleanup/HMR
+            // Silence AbortErrors
             if (err?.name === 'AbortError' || err?.message?.includes('aborted')) {
                 return;
             }
             console.error('❌ Auth initialization failed:', err);
             set({ user: null, role: null, loading: false });
+        } finally {
+            isInitializing = false;
         }
     },
 }));

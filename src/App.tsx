@@ -98,7 +98,11 @@ function App() {
                 window.location.hash = '#profile';
             }, 1000);
         }
-        initialize();
+        initialize().catch(err => {
+            if (err?.name !== 'AbortError' && !err?.message?.includes('aborted')) {
+                console.error('Failed to initialize auth:', err);
+            }
+        });
     }, []);
 
     useEffect(() => {
