@@ -131,9 +131,7 @@ router.get('/', async (req, res) => {
             .select('*, profiles!merchant_id(store_name)')
             .is('deleted_at', null);
 
-        if (error) throw error;
-
-        const baseUrl = (process.env.FRONTEND_URL || 'https://tarzify.com').trim();
+        const baseUrl = (process.env.FRONTEND_URL || 'https://tarzify.com').replace(/[\r\n]/g, '').replace(/\\n/g, '').replace(/\\r/g, '').trim();
 
         let xml = '<?xml version="1.0" encoding="UTF-8"?>';
         xml += '<rss xmlns:g="http://base.google.com/ns/1.0" version="2.0">';
