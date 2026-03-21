@@ -68,7 +68,7 @@ export const Navbar = memo(({
                                     alt="TARZIFY Logo"
                                     className="h-7 md:h-10 w-7 md:w-10 rounded-full object-cover border border-white/10 group-hover:scale-105 transition-transform shadow-lg"
                                 />
-                                <span className="text-xl md:text-3xl font-black tracking-tighter bg-gradient-to-r from-primary via-accent to-primary bg-[length:200%_auto] animate-gradient bg-clip-text text-transparent group-hover:scale-105 transition-transform">
+                                <span className="hidden sm:inline text-xl md:text-3xl font-black tracking-tighter bg-gradient-to-r from-primary via-accent to-primary bg-[length:200%_auto] animate-gradient bg-clip-text text-transparent group-hover:scale-105 transition-transform">
                                     TARZIFY
                                 </span>
                             </div>
