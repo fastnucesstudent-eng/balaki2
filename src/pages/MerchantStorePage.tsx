@@ -67,7 +67,7 @@ export const MerchantStorePage = ({ slug, onAddToCart, onQuickView }: MerchantSt
     const isPaused = merchant.merchant_status === 'paused';
 
     return (
-        <div className="min-h-screen bg-background border-t border-foreground/5 pb-20 pt-20 md:pt-24">
+        <div className="min-h-screen bg-background pb-20 pt-0">
             {/* STORE HERO BANNER (POSTER) */}
             <div className="relative w-full aspect-[21/9] md:aspect-[25/7] bg-gradient-to-br from-primary/10 to-primary/30 overflow-hidden shadow-2xl">
                 {merchant.banner_url ? (

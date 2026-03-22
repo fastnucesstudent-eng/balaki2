@@ -669,7 +669,7 @@ export const AdminDashboard = () => {
     };
 
     return (
-        <div className="min-h-screen bg-transparent flex pt-20">
+        <div className="min-h-screen bg-transparent flex pt-4 text-foreground">
             {/* Sidebar Backdrop */}
             <AnimatePresence>
                 {showMobileMenu && (

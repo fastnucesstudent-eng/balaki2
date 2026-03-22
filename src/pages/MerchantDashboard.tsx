@@ -747,7 +747,7 @@ export const MerchantDashboard = () => {
     };
 
     return (
-        <div className="min-h-screen bg-background text-foreground flex flex-col pt-20">
+        <div className="min-h-screen bg-background text-foreground flex flex-col pt-4">
             {merchantStatus && merchantStatus !== 'approved' && (
                 <div className={`w-full p-4 text-center font-black uppercase italic tracking-tighter text-xs ${
                     merchantStatus === 'pending' ? 'bg-amber-500 text-black' :

@@ -348,7 +348,7 @@ export const CheckoutPage = ({ onBack }: { onBack: () => void }) => {
     }
 
     return (
-        <div className="min-h-screen bg-background pt-24 md:pt-32 pb-24 px-6">
+        <div className="min-h-screen bg-background pt-4 pb-24 px-6">
             <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-16">
 
                 {/* Left: Checkout Form */}

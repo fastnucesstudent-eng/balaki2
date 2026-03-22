@@ -27,7 +27,7 @@ export const Hero = () => {
     };
 
     return (
-        <section className="relative min-h-[50vh] md:min-h-[65vh] flex items-center justify-center pt-20 md:pt-28 pb-12 md:pb-20 overflow-hidden">
+        <section className="relative min-h-[50vh] md:min-h-[65vh] flex items-center justify-center pt-0 pb-12 md:pb-20 overflow-hidden">
             {/* Background Orbs */}
             <div className="absolute top-1/4 left-1/4 w-64 md:w-96 h-64 md:h-96 bg-primary/20 rounded-full blur-[80px] md:blur-[100px] animate-pulse" />
             <div className="absolute bottom-1/4 right-1/4 w-64 md:w-96 h-64 md:h-96 bg-accent/20 rounded-full blur-[80px] md:blur-[100px] animate-pulse" style={{ animationDelay: '1s' }} />

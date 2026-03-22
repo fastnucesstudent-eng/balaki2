@@ -304,7 +304,7 @@ export const MerchantRegistration = ({ onBack }: { onBack: () => void }) => {
     }
 
     return (
-        <div className="min-h-screen bg-background pt-24 pb-20 px-4 sm:px-6">
+        <div className="min-h-screen bg-background pt-4 pb-20 px-4 sm:px-6">
             <div className="max-w-6xl mx-auto">
                 {/* Header */}
                 <div className="flex items-center gap-4 mb-10 md:mb-14">

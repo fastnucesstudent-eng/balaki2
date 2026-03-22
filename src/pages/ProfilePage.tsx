@@ -103,7 +103,7 @@ export const ProfilePage = () => {
     if (!user) return null;
 
     return (
-        <div className="min-h-screen bg-background pt-32 pb-24 px-6 font-primary">
+        <div className="min-h-screen bg-background pt-4 pb-24 px-6 font-primary">
             {showSettings && <AccountSettingsModal onClose={() => setShowSettings(false)} />}
             {selectedOrder && <ReceiptModal order={selectedOrder} onClose={() => setSelectedOrder(null)} />}
             {showPrivacy && <PrivacySecurityModal onClose={() => setShowPrivacy(false)} />}

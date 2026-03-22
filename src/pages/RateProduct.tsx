@@ -156,7 +156,7 @@ export const RateProduct = ({ params, onComplete }: RateProductProps) => {
     }
 
     return (
-        <div className="min-h-screen bg-background pt-32 pb-20 px-6">
+        <div className="min-h-screen bg-background pt-4 pb-20 px-6">
             <div className="max-w-2xl mx-auto">
                 <button onClick={onComplete} className="flex items-center gap-2 text-xs font-black uppercase tracking-widest opacity-50 hover:opacity-100 transition-opacity mb-8">
                     <ArrowLeft className="w-4 h-4" />
