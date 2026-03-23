@@ -38,7 +38,7 @@ export const useProducts = (isAdmin = false) => {
             setProducts(enriched);
             return enriched;
         },
-        staleTime: 1000 * 60 * 5, // 5 minutes
+        staleTime: 1000 * 60 * 10, // 10 minutes
     });
 
     // Real-time synchronization: Invalidate query on database changes

@@ -31,8 +31,9 @@ app.use((req, res, next) => {
         const allowedOrigins = [
             'https://tarzify.com',
             'https://www.tarzify.com',
-            'https://backend.tarzify.com'
-        ];
+            'https://backend.tarzify.com',
+            process.env.FRONTEND_URL
+        ].filter(Boolean);
 
         if (allowedOrigins.includes(origin) || origin.endsWith('.vercel.app') || (process.env.NODE_ENV !== 'production' && origin.includes('localhost'))) {
             res.header('Access-Control-Allow-Origin', origin);
@@ -212,8 +213,8 @@ app.get('/api/health', (req, res) => {
 
 // Only start the HTTP server when running locally (not on Vercel)
 if (process.env.VERCEL !== '1') {
-    app.listen(PORT, () => {
-        console.log(`Consolidated TypeScript Server running on port ${PORT}`);
+    app.listen(Number(PORT), '0.0.0.0', () => {
+        console.log(`Consolidated TypeScript Server running on port ${PORT} (Network exposed)`);
     });
 }
 

@@ -23,7 +23,7 @@ export function useMerchantStore(slug: string | null) {
             return data;
         },
         enabled: !!slug,
-        staleTime: 1000 * 60 * 5,
+        staleTime: 1000 * 60 * 10,
     });
 
     const merchantId = merchant?.id;
@@ -44,7 +44,7 @@ export function useMerchantStore(slug: string | null) {
             return merchant.merchant_status === 'paused' ? [] : data;
         },
         enabled: !!merchantId,
-        staleTime: 1000 * 60 * 5,
+        staleTime: 1000 * 60 * 10,
     });
 
     // 3. Get Follower Count
@@ -83,7 +83,7 @@ export function useMerchantStore(slug: string | null) {
             return !!data;
         },
         enabled: !!merchantId,
-        staleTime: 1000 * 60 * 5,
+        staleTime: 1000 * 60 * 10,
     });
 
     const toggleFollow = async () => {
