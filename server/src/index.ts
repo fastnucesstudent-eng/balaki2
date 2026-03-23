@@ -114,6 +114,9 @@ app.post('/api/update-password', async (req, res) => {
 
 // Seed Endpoint - Admin only (protected by admin dashboard auth)
 app.post('/api/setup/seed', async (req, res) => {
+    if (process.env.NODE_ENV === 'production') {
+        return res.status(403).json({ success: false, error: 'Seed endpoint is disabled in production' });
+    }
     // Get a default merchant to assign products to
     const { data: merchants } = await supabase.from('profiles').select('id').eq('role', 'merchant').limit(1);
     const defaultMerchantId = merchants?.[0]?.id;

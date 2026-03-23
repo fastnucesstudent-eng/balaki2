@@ -1641,13 +1641,13 @@ export const MerchantDashboard = () => {
 
                                     <div className="space-y-4 relative">
                                         <div className="w-full bg-background/60 border border-foreground/10 rounded-2xl p-4 px-6 pr-12 font-mono text-sm opacity-70 break-all relative group/link">
-                                            {window.location.origin}/#store/{storeSlug}
+                                            {import.meta.env.VITE_SITE_URL || window.location.origin}/#store/{storeSlug}
                                             <QrCode className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 opacity-20 group-hover/link:opacity-100 transition-opacity" />
                                         </div>
                                         <div className="flex flex-col sm:flex-row gap-3">
                                             <button
                                                 onClick={() => {
-                                                    navigator.clipboard.writeText(`${window.location.origin}/#store/${storeSlug}`);
+                                                    navigator.clipboard.writeText(`${import.meta.env.VITE_SITE_URL || window.location.origin}/#store/${storeSlug}`);
                                                     toast.show('Store link copied!', 'success');
                                                 }}
                                                 className="flex-1 flex items-center justify-center gap-2 bg-primary text-white font-black px-6 py-4 rounded-2xl uppercase italic tracking-tighter shadow-xl shadow-primary/20 hover:scale-105 active:scale-95 transition-all text-sm"
@@ -1657,7 +1657,8 @@ export const MerchantDashboard = () => {
                                             </button>
                                             <button
                                                 onClick={async () => {
-                                                    const shareUrl = `${window.location.origin}/#store/${storeSlug}`;
+                                                    const siteUrl = import.meta.env.VITE_SITE_URL || window.location.origin;
+                                                    const shareUrl = `${siteUrl}/#store/${storeSlug}`;
                                                     if (navigator.share) {
                                                         try { await navigator.share({ title: 'Visit my store!', url: shareUrl }); } catch {}
                                                     } else {
@@ -1675,7 +1676,7 @@ export const MerchantDashboard = () => {
 
                                     {/* WhatsApp Quick Share */}
                                     <a
-                                        href={`https://wa.me/?text=${encodeURIComponent(`Check out my store on Tarzify! ${window.location.origin}/#store/${storeSlug}`)}`}
+                                        href={`https://wa.me/?text=${encodeURIComponent(`Check out my store on Tarzify! ${import.meta.env.VITE_SITE_URL || window.location.origin}/#store/${storeSlug}`)}`}
                                         target="_blank"
                                         rel="noopener noreferrer"
                                         className="flex items-center justify-center gap-3 py-4 bg-green-500 text-white rounded-2xl font-black uppercase text-xs tracking-widest hover:scale-105 active:scale-95 transition-all shadow-lg shadow-green-500/20 relative"

@@ -503,7 +503,7 @@ router.post('/create', async (req, res) => {
         
         const merchantMap: Record<string, string> = {};
         for (const item of items) {
-            const product = products?.find(p => p.id === item.id);
+            const product = (products as any[])?.find((p: any) => String(p.id) === String(item.id));
             if (!product) throw new Error(`Product ${item.id} not found`);
             merchantMap[item.id] = product.merchant_id;
             if (product.stock < item.quantity) throw new Error(`Insufficient stock for ${product.name}`);

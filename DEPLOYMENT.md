@@ -104,8 +104,32 @@ Go to **GitHub Repo -> Settings -> Secrets usage -> New repository secret** and 
 
 ---
 
+## 📁 Part 4: Project Organization & Environment
+
+### 📦 Migration Files
+Database migrations have been organized into the following directories:
+- **Frontend Root**: `database/migrations/`
+- **Backend Root**: `server/database/migrations/`
+
+Use these when setting up your production database schema in Supabase.
+
+### 🔐 Environment Variables
+We have created `.env.production` templates. For production, ensure these are used:
+- **Frontend**: `.env.production` (Vite will automatically use this during `npm run build`)
+- **Backend**: `server/.env.production` (Copy this to your Azure VM as `.env`)
+
+---
+
 ## ✅ Summary of Next Steps for You
 
 1.  **Repo Secrets**: Go to GitHub and add the secrets mentioned above.
-2.  **Azure Setup**: SSH into your VM and do the initial setup (Node, PM2, .env).
-3.  **Push Code**: Once you push changes, the GitHub Actions will trigger!
+2.  **Azure Setup**: SSH into your VM, copy `server/.env.production` to `server/.env`, and update the secrets.
+3.  **Build**: Run `npm run build` locally to generate the `dist/` folder for Hostinger.
+4.  **Push Code**: Once you push changes, the GitHub Actions will trigger!
+
+---
+
+## 🛠 Troubleshooting
+- **Build Errors**: Ensure `typescript` 5.x is used.
+- **CORS**: If you change the domain, update `BACKEND_URL` and `FRONTEND_URL` in your `.env` files.
+- **Seed Endpoint**: The `/api/setup/seed` endpoint is disabled when `NODE_ENV=production`.

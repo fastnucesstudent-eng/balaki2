@@ -200,7 +200,7 @@ export const MerchantRegistration = ({ onBack }: { onBack: () => void }) => {
                     email: formData.email,
                     password: formData.password,
                     options: {
-                        emailRedirectTo: `${window.location.origin}/#merchant`,
+                        emailRedirectTo: `${import.meta.env.VITE_SITE_URL || window.location.origin}/#merchant`,
                         data: {
                             full_name: formData.fullName,
                             role: 'merchant',

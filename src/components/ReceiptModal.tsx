@@ -4,7 +4,8 @@ import { motion } from 'framer-motion';
 import { X, Printer, CheckCircle, MapPin, Mail, Phone, Truck } from 'lucide-react';
 
 export const ReceiptModal = ({ order, onClose }: { order: any, onClose: () => void }) => {
-    const trackUrl = `${window.location.origin}/#track-order?id=${order.order_number}`;
+    const siteUrl = import.meta.env.VITE_SITE_URL || window.location.origin;
+    const trackUrl = `${siteUrl}/#track-order?id=${order.order_number}`;
     const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(trackUrl)}`;
 
     // Lock background scroll while modal is open (fixes Lenis hijacking scroll)
