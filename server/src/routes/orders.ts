@@ -769,8 +769,7 @@ router.post('/submit-review', async (req, res) => {
                 user_id,
                 rating,
                 comment,
-                image_urls: image_urls || [],
-                updated_at: new Date().toISOString()
+                image_urls: image_urls || []
             }, { onConflict: 'order_id,product_id' });
 
         if (reviewErr) throw reviewErr;
