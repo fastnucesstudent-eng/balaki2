@@ -68,6 +68,7 @@ export const MerchantDashboard = () => {
         courier_name: 'TCS',
         shipping_proof_url: ''
     });
+    const [isAssigningTracking, setIsAssigningTracking] = useState(false);
 
     // Bulk Discount State
     const [showBulkDiscount, setShowBulkDiscount] = useState(false);
@@ -284,6 +285,8 @@ export const MerchantDashboard = () => {
         try {
             const { error } = await supabase.from('banners').insert([{
                 ...newBanner,
+                end_at: newBanner.end_at || null,
+                link_url: newBanner.link_url || null,
                 merchant_id: user.id,
                 status: 'pending',
                 display_order: 0 // Admin will set this during approval
@@ -645,6 +648,7 @@ export const MerchantDashboard = () => {
 
     const handleAssignTracking = async (e: React.FormEvent) => {
         e.preventDefault();
+        setIsAssigningTracking(true);
         try {
             const res = await fetchWithTimeout(`${import.meta.env.VITE_API_URL}/orders/assign-tracking/${trackingData.orderId}`, {
                 method: 'PATCH',
@@ -665,6 +669,8 @@ export const MerchantDashboard = () => {
             }
         } catch (error: any) {
             toast.show('Error assigning tracking: ' + error.message, 'error');
+        } finally {
+            setIsAssigningTracking(false);
         }
     };
     const handleDeleteProduct = async (id: number) => {
@@ -789,7 +795,14 @@ export const MerchantDashboard = () => {
                                         <input type="file" accept="image/*" onChange={handleShippingProofUpload} className="hidden" disabled={uploading} />
                                     </label>
                                 </div>
-                                <button type="submit" disabled={!trackingData.tracking_number} className="w-full py-5 bg-primary text-white rounded-3xl font-black uppercase italic tracking-tighter disabled:opacity-30">Confirm Shipment</button>
+                                <button 
+                                    type="submit" 
+                                    disabled={!trackingData.tracking_number || uploading || isAssigningTracking} 
+                                    className="w-full py-5 bg-primary text-white rounded-3xl font-black uppercase italic tracking-tighter disabled:opacity-30 flex items-center justify-center gap-3"
+                                >
+                                    {(uploading || isAssigningTracking) && <Loader2 className="w-5 h-5 animate-spin" />}
+                                    {isAssigningTracking ? 'Confirming...' : 'Confirm Shipment'}
+                                </button>
                             </form>
                         </motion.div>
                     </div>

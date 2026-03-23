@@ -62,6 +62,43 @@ export const AdminDashboard = () => {
     const [allVouchers, setAllVouchers] = useState<any[]>([]);
     const [selectedVoucherStats, setSelectedVoucherStats] = useState<any[]>([]);
     const [showVoucherForm, setShowVoucherForm] = useState(false);
+    const [notifications, setNotifications] = useState<any[]>([]);
+    const [showNotifications, setShowNotifications] = useState(false);
+
+    // Fetch Notifications (Pending Actions)
+    const fetchNotifications = async () => {
+        try {
+            const { data: merchants } = await supabase.from('profiles').select('id, full_name, store_name, created_at').eq('role', 'merchant').eq('merchant_status', 'pending');
+            const { data: banners } = await supabase.from('banners').select('id, image_url, created_at').eq('status', 'pending');
+
+            const mDocs = (merchants || []).map(m => ({
+                id: m.id,
+                type: 'merchant',
+                title: 'New Merchant',
+                message: `${m.full_name} registered ${m.store_name}`,
+                date: m.created_at,
+                targetTab: 'merchants'
+            }));
+
+            const bDocs = (banners || []).map(b => ({
+                id: b.id,
+                type: 'banner',
+                title: 'Banner Request',
+                message: 'New banner awaiting approval',
+                image: b.image_url,
+                date: b.created_at,
+                targetTab: 'banners'
+            }));
+
+            setNotifications([...mDocs, ...bDocs].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()));
+        } catch (err) { console.error('Notification fetch error:', err); }
+    };
+
+    useEffect(() => {
+        fetchNotifications();
+        const interval = setInterval(fetchNotifications, 60000); // Polling every 60s
+        return () => clearInterval(interval);
+    }, []);
 
     useEffect(() => {
         const isAnyModalOpen = showVoucherForm || showMobileMenu || editingProductId !== null || selectedOrderToView !== null || articleToDelete !== null;
@@ -386,6 +423,7 @@ export const AdminDashboard = () => {
                 .insert({
                     ...newBanner,
                     end_at: newBanner.end_at || null,
+                    link_url: newBanner.link_url || null,
                     status: 'approved' // Admin added banners are active immediately
                 });
             if (insertError) throw insertError;
@@ -721,11 +759,61 @@ export const AdminDashboard = () => {
                             <p className="text-[10px] sm:text-sm opacity-50 font-medium">Store operations and metrics.</p>
                         </div>
                     </div>
-                    <div className="flex items-center gap-4 ml-auto sm:ml-0">
-                        <button className="p-3 glass rounded-full hover:scale-110 transition-transform relative">
+                    <div className="flex items-center gap-4 ml-auto sm:ml-0 relative">
+                        <button 
+                            onClick={() => setShowNotifications(!showNotifications)}
+                            className="p-3 glass rounded-full hover:scale-110 transition-transform relative"
+                        >
                             <Bell className="w-5 h-5" />
-                            <span className="absolute top-0 right-0 w-2 h-2 bg-primary rounded-full shadow-[0_0_10px_rgba(var(--primary),0.5)]" />
+                            {notifications.length > 0 && (
+                                <span className="absolute top-0 right-0 w-4 h-4 bg-primary text-[10px] font-black flex items-center justify-center rounded-full shadow-[0_0_10px_rgba(var(--primary),0.5)] text-white ring-2 ring-background">
+                                    {notifications.length}
+                                </span>
+                            )}
                         </button>
+
+                        <AnimatePresence>
+                            {showNotifications && (
+                                <motion.div 
+                                    initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                                    exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                                    className="absolute top-full right-0 mt-4 w-80 glass border border-white/10 rounded-[2rem] shadow-2xl z-[200] overflow-hidden"
+                                >
+                                    <div className="p-6 border-b border-white/5 flex items-center justify-between bg-primary/5">
+                                        <h3 className="text-sm font-black uppercase tracking-widest italic flex items-center gap-2">
+                                            <Bell className="w-4 h-4 text-primary" /> Notifications
+                                        </h3>
+                                        <span className="text-[10px] bg-primary text-white px-2 py-0.5 rounded-full font-black uppercase">{notifications.length} New</span>
+                                    </div>
+                                    <div className="max-h-[400px] overflow-y-auto p-2">
+                                        {notifications.length === 0 ? (
+                                            <div className="py-12 text-center opacity-30">
+                                                <Bell className="w-8 h-8 mx-auto mb-2" />
+                                                <p className="text-xs font-black uppercase tracking-tighter italic">All caught up!</p>
+                                            </div>
+                                        ) : (
+                                            notifications.map(n => (
+                                                <button 
+                                                    key={`${n.type}-${n.id}`}
+                                                    onClick={() => { setActiveTab(n.targetTab); setShowNotifications(false); }}
+                                                    className="w-full p-4 hover:bg-white/5 rounded-2xl transition-all text-left flex gap-3 group border border-transparent hover:border-white/5"
+                                                >
+                                                    <div className={`w-10 h-10 rounded-xl flex-shrink-0 flex items-center justify-center ${n.type === 'merchant' ? 'bg-primary/20 text-primary' : 'bg-accent/20 text-accent'}`}>
+                                                        {n.type === 'merchant' ? <Store className="w-5 h-5" /> : <ImageIcon className="w-5 h-5" />}
+                                                    </div>
+                                                    <div className="flex-grow min-w-0">
+                                                        <p className="text-xs font-black uppercase tracking-tight italic group-hover:text-primary transition-colors">{n.title}</p>
+                                                        <p className="text-xs opacity-60 font-medium truncate mt-0.5">{n.message}</p>
+                                                        <p className="text-[10px] opacity-30 mt-1 font-bold">{new Date(n.date).toLocaleDateString()}</p>
+                                                    </div>
+                                                </button>
+                                            ))
+                                        )}
+                                    </div>
+                                </motion.div>
+                            )}
+                        </AnimatePresence>
                         <button className="p-3 glass rounded-full hover:scale-110 transition-transform">
                             <Settings className="w-5 h-5" />
                         </button>

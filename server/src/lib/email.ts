@@ -56,3 +56,54 @@ export const sendMerchantApprovalEmail = async (email: string, fullName: string,
         html
     });
 };
+
+export const sendMerchantRegistrationNotificationToAdmin = async (merchantData: any) => {
+    const adminEmail = process.env.ADMIN_EMAIL || 'admin@tarzify.com';
+    const frontendUrl = process.env.FRONTEND_URL || 'https://tarzify.com';
+
+    const html = `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #eeeeee; border-radius: 12px;">
+            <div style="background-color: #f85606; color: white; padding: 30px; border-radius: 10px 10px 0 0; text-align: center;">
+                <h1 style="margin: 0; font-size: 24px; text-transform: uppercase; font-weight: 900;">New Merchant Registration</h1>
+            </div>
+            <div style="padding: 30px; background-color: #ffffff;">
+                <p style="font-size: 16px; color: #333;">A new merchant has registered and is awaiting approval.</p>
+                <table width="100%" border="0" cellspacing="0" cellpadding="10" style="margin: 20px 0; border: 1px solid #f0f0f0; border-radius: 8px;">
+                    <tr bgcolor="#f9f9f9">
+                        <td width="30%" style="font-weight: bold; color: #666;">Store Name</td>
+                        <td style="color: #333;">${merchantData.storeName}</td>
+                    </tr>
+                    <tr>
+                        <td style="font-weight: bold; color: #666;">Owner Name</td>
+                        <td style="color: #333;">${merchantData.fullName}</td>
+                    </tr>
+                    <tr bgcolor="#f9f9f9">
+                        <td style="font-weight: bold; color: #666;">Email</td>
+                        <td style="color: #333;">${merchantData.email}</td>
+                    </tr>
+                    <tr>
+                        <td style="font-weight: bold; color: #666;">Phone</td>
+                        <td style="color: #333;">${merchantData.contactNumber}</td>
+                    </tr>
+                    <tr bgcolor="#f9f9f9">
+                        <td style="font-weight: bold; color: #666;">Address</td>
+                        <td style="color: #333;">${merchantData.businessAddress}</td>
+                    </tr>
+                </table>
+                <div style="text-align: center; margin-top: 30px;">
+                    <a href="${frontendUrl}/admin" style="background-color: #212121; color: white; padding: 15px 30px; border-radius: 8px; text-decoration: none; font-weight: bold; text-transform: uppercase;">Review Application in Dashboard</a>
+                </div>
+            </div>
+            <div style="text-align: center; padding: 20px; color: #999; font-size: 12px; border-top: 1px solid #f0f0f0;">
+                <p>This is an automated system notification.</p>
+            </div>
+        </div>
+    `;
+
+    return emailTransporter.sendMail({
+        from: process.env.SMTP_FROM || `"TARZIFY System" <${process.env.SMTP_USER}>`,
+        to: adminEmail,
+        subject: `ACTION REQUIRED: New Merchant Application - ${merchantData.storeName}`,
+        html
+    });
+};

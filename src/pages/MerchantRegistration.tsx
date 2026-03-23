@@ -247,6 +247,18 @@ export const MerchantRegistration = ({ onBack }: { onBack: () => void }) => {
                 throw profileError;
             }
 
+            // 3. Notify Admin of new registration via Email
+            try {
+                await fetch(`${import.meta.env.VITE_API_URL}/merchants/notify-registration`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ merchantData: formData })
+                });
+            } catch (notifyErr) {
+                console.error('Failed to notify admin of registration:', notifyErr);
+                // Don't fail the whole registration if notification fails
+            }
+
             setSuccess(true);
         } catch (err: any) {
             console.error('Submit error:', err);

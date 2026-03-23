@@ -113,4 +113,28 @@ router.post('/notify-approval', async (req, res) => {
     }
 });
 
+/**
+ * POST /api/merchants/notify-registration
+ * Notifies the admin about a new merchant registration.
+ */
+router.post('/notify-registration', async (req, res) => {
+    const { merchantData } = req.body;
+    console.log(`[REGISTRATION NOTIFY] New merchant: ${merchantData?.storeName}`);
+
+    if (!merchantData) {
+        return res.status(400).json({ error: 'Missing merchantData' });
+    }
+
+    try {
+        const { sendMerchantRegistrationNotificationToAdmin } = await import('../lib/email');
+        await sendMerchantRegistrationNotificationToAdmin(merchantData);
+        
+        console.log(`[REGISTRATION NOTIFY] Admin notified of registration: ${merchantData.storeName}`);
+        res.json({ success: true, message: 'Admin notified' });
+    } catch (error: any) {
+        console.error('[REGISTRATION NOTIFY] Error:', error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
 export default router;
