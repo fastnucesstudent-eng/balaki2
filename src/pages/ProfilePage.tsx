@@ -21,6 +21,7 @@ export const ProfilePage = () => {
     const [cancellingOrderId, setCancellingOrderId] = useState<string | null>(null);
     const [confirmingCancelId, setConfirmingCancelId] = useState<string | null>(null);
     const [highlightProductId, setHighlightProductId] = useState<string | null>(null);
+    const [urlParams, setUrlParams] = useState<{ order_id: string | null, sig: string | null }>({ order_id: null, sig: null });
 
     useEffect(() => {
         const hash = window.location.hash;
@@ -28,6 +29,8 @@ export const ProfilePage = () => {
             const params = new URLSearchParams(hash.split('?')[1]);
             const tabParam = params.get('tab');
             const productParam = params.get('product_id');
+            const orderParam = params.get('order_id');
+            const sigParam = params.get('sig');
             
             if (tabParam && ['orders', 'to-review', 'my-reviews', 'following'].includes(tabParam)) {
                 setActiveTab(tabParam as any);
@@ -36,6 +39,9 @@ export const ProfilePage = () => {
                 setHighlightProductId(productParam);
                 // Clear highlight after some time
                 setTimeout(() => setHighlightProductId(null), 5000);
+            }
+            if (orderParam || sigParam) {
+                setUrlParams({ order_id: orderParam, sig: sigParam });
             }
         }
     }, [window.location.hash]);
@@ -306,7 +312,11 @@ export const ProfilePage = () => {
                                                 </div>
                                             </div>
                                             <button 
-                                                onClick={() => window.location.hash = `#rate-product?order_id=${item.order_id}&product_id=${item.product_id}&user_id=${user.id}`}
+                                                onClick={() => {
+                                                    const orderId = urlParams.order_id || item.order_id;
+                                                    const sigPart = urlParams.order_id === item.order_id && urlParams.sig ? `&sig=${urlParams.sig}` : '';
+                                                    window.location.hash = `#rate-product?order_id=${orderId}&product_id=${item.product_id}&user_id=${user.id}${sigPart}`;
+                                                }}
                                                 className="bg-primary text-white px-8 py-3 rounded-xl font-black uppercase italic tracking-tighter text-xs shadow-xl shadow-primary/20 hover:scale-105 transition-transform"
                                             >
                                                 Review Now
