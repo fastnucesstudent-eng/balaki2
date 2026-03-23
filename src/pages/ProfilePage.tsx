@@ -20,6 +20,25 @@ export const ProfilePage = () => {
     const [following, setFollowing] = useState<any[]>([]);
     const [cancellingOrderId, setCancellingOrderId] = useState<string | null>(null);
     const [confirmingCancelId, setConfirmingCancelId] = useState<string | null>(null);
+    const [highlightProductId, setHighlightProductId] = useState<string | null>(null);
+
+    useEffect(() => {
+        const hash = window.location.hash;
+        if (hash.includes('?')) {
+            const params = new URLSearchParams(hash.split('?')[1]);
+            const tabParam = params.get('tab');
+            const productParam = params.get('product_id');
+            
+            if (tabParam && ['orders', 'to-review', 'my-reviews', 'following'].includes(tabParam)) {
+                setActiveTab(tabParam as any);
+            }
+            if (productParam) {
+                setHighlightProductId(productParam);
+                // Clear highlight after some time
+                setTimeout(() => setHighlightProductId(null), 5000);
+            }
+        }
+    }, [window.location.hash]);
 
     useEffect(() => {
         if (user) {
@@ -274,7 +293,8 @@ export const ProfilePage = () => {
                                             key={`${item.order_id}-${item.product_id}`}
                                             initial={{ opacity: 0, y: 10 }}
                                             animate={{ opacity: 1, y: 0 }}
-                                            className="glass p-6 rounded-[2rem] border-white/5 flex items-center justify-between"
+                                            className={`glass p-6 rounded-[2rem] border-white/5 flex items-center justify-between transition-all duration-500 ${highlightProductId === String(item.product_id) ? 'ring-2 ring-primary bg-primary/5 scale-[1.02] shadow-2xl shadow-primary/20' : ''}`}
+                                            id={`review-item-${item.product_id}`}
                                         >
                                             <div className="flex items-center gap-6">
                                                 <div className="w-20 h-20 rounded-2xl overflow-hidden bg-foreground/5 shadow-lg flex-shrink-0">

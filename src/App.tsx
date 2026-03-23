@@ -170,7 +170,7 @@ function App() {
             setShowAdmin(hash === '#admin' && role === 'admin');
             setShowMerchant(hash === '#merchant' && (role === 'merchant' || role === 'admin'));
             setShowCheckout(hash === '#checkout');
-            setShowProfile(hash === '#profile');
+            setShowProfile(hash.startsWith('#profile'));
             setShowMerchantRegister(hash === '#merchant-register');
             setShowUsedOnly(hash === '#used');
             setShowSaleOnly(hash === '#sale');

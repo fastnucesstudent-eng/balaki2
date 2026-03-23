@@ -290,7 +290,7 @@ const sendMerchantOrderEmail = async (merchantEmail: string, order: any, merchan
     } catch (error) { console.error('Merchant email error:', error); }
 };
 
-const sendStatusUpdateEmail = async (email: string, order: any, status: string, trackingData?: any) => {
+const sendStatusUpdateEmail = async (email: string, order: any, status: string, trackingData?: any, items?: any[]) => {
     if (!process.env.SMTP_USER || !process.env.SMTP_PASS) return;
     const transporter = getTransporter();
     const frontendUrl = process.env.FRONTEND_URL || 'https://tarzify.com';
@@ -319,6 +319,36 @@ const sendStatusUpdateEmail = async (email: string, order: any, status: string, 
         statusTitle = `Order ${status.toUpperCase()}`;
         statusIcon = '📦';
         statusMessage = `Your order #${order.order_number} status has been updated to ${status}.`;
+    }
+
+    let itemsHtml = '';
+    if (status === 'delivered' && items && items.length > 0) {
+        itemsHtml = `
+            <tr>
+                <td style="padding: 20px 20px 0 20px;">
+                    <div style="font-family: Arial, sans-serif; font-size: 12px; font-weight: 800; color: #212121; text-transform: uppercase; margin-bottom: 20px; border-bottom: 2px solid #eeeeee; padding-bottom: 10px;">Review your items</div>
+                    <table width="100%" border="0" cellspacing="0" cellpadding="0">
+                        ${items.map(item => `
+                            <tr>
+                                <td style="padding: 15px 0; border-bottom: 1px solid #f0f0f0;">
+                                    <table width="100%" border="0" cellspacing="0" cellpadding="0">
+                                        <tr>
+                                            <td width="60" valign="top">
+                                                <img src="${item.products?.image_url || 'https://via.placeholder.com/60'}" width="60" height="60" style="border-radius: 8px; object-fit: cover; display: block;" alt="${item.products?.name}">
+                                            </td>
+                                            <td style="padding-left: 15px;">
+                                                <div style="font-family: Arial, sans-serif; font-weight: 700; color: #212121; font-size: 14px; margin-bottom: 4px;">${item.products?.name}</div>
+                                                <a href="${frontendUrl}/#profile?tab=to-review&product_id=${item.product_id}" style="display: inline-block; background-color: #212121; color: #ffffff; padding: 8px 15px; border-radius: 6px; font-family: Arial, sans-serif; font-size: 11px; font-weight: 800; text-decoration: none; text-transform: uppercase; letter-spacing: 1px;">Review Now</a>
+                                            </td>
+                                        </tr>
+                                    </table>
+                                </td>
+                            </tr>
+                        `).join('')}
+                    </table>
+                </td>
+            </tr>
+        `;
     }
 
     const html = `
@@ -368,6 +398,8 @@ const sendStatusUpdateEmail = async (email: string, order: any, status: string, 
                                     </table>
                                 </td>
                             </tr>
+
+                            ${itemsHtml}
 
                             ${trackingData && status === 'shipped' ? `
                             <!-- Tracking Info -->
@@ -611,8 +643,20 @@ router.patch('/status/:id', async (req, res) => {
     try {
         const { data: order, error } = await supabase.from('orders').update({ status }).eq('id', id).select().single();
         if (error) throw error;
+        
         // Non-blocking email sending
-        if (order.email) sendStatusUpdateEmail(order.email, order, status);
+        if (order.email) {
+            if (status === 'delivered') {
+                // Fetch items for review links
+                const { data: items } = await supabase
+                    .from('order_items')
+                    .select('*, products(name, image_url)')
+                    .eq('order_id', id);
+                sendStatusUpdateEmail(order.email, order, status, undefined, items || undefined);
+            } else {
+                sendStatusUpdateEmail(order.email, order, status);
+            }
+        }
         res.json({ success: true });
     } catch (error: any) { res.status(400).json({ success: false, error: error.message }); }
 });
