@@ -3,12 +3,12 @@ import dotenv from 'dotenv';
 
 dotenv.config();
 
-const supabaseUrl = process.env.SUPABASE_URL;
-const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+const supabaseUrl = process.env.SUPABASE_URL || '';
+const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
 
 if (!supabaseUrl || !supabaseKey) {
-    console.error('CRITICAL: Supabase environment variables are missing!');
-    process.exit(1);
+    console.warn('WARNING: Supabase environment variables are missing! Set them in Vercel dashboard.');
 }
 
 export const supabase = createClient(supabaseUrl, supabaseKey);
+

@@ -40,7 +40,7 @@ export const ReceiptModal = ({ order, onClose }: { order: any, onClose: () => vo
                     <div className="bg-black p-10 text-white relative">
                         <div className="flex justify-between items-start">
                             <div className="space-y-2">
-                                <h2 className="text-5xl font-black italic tracking-tighter uppercase leading-none">TARZIFY</h2>
+                                <h2 className="text-5xl font-black italic tracking-tighter uppercase leading-none text-primary">BALAKI ORGANIC</h2>
                                 <p className="text-xs font-bold tracking-[0.2em] opacity-50 uppercase">Official Order Receipt</p>
                             </div>
                             <div className="text-right">
@@ -99,7 +99,7 @@ export const ReceiptModal = ({ order, onClose }: { order: any, onClose: () => vo
                                         </div>
                                     </div>
                                 )}
-                                <p className="text-sm opacity-50 leading-relaxed max-w-sm">Thank you for choosing TARZIFY. Your premium selection is being processed and will be with you shortly.</p>
+                                <p className="text-sm opacity-50 leading-relaxed max-w-sm">Thank you for choosing Balaki Organic. Your 100% pure organic order is being processed and will be with you shortly.</p>
                             </div>
                         </div>
 
@@ -127,15 +127,15 @@ export const ReceiptModal = ({ order, onClose }: { order: any, onClose: () => vo
                             <div className="space-y-4">
                                 <h4 className="font-black uppercase opacity-30 text-[10px] tracking-[0.2em]">Store Information</h4>
                                 <div className="p-6 rounded-[2rem] space-y-2 border border-black/5">
-                                    <p className="font-black text-lg">TARZIFY HQ</p>
-                                    <p className="text-xs opacity-50">Luxury Plaza, Gulberg III, Lahore, Pakistan</p>
+                                    <p className="font-black text-lg">BALAKI ORGANIC HQ</p>
+                                    <p className="text-xs opacity-50">Organic Hub, Gulberg III, Lahore, Pakistan</p>
                                     <div className="pt-4 space-y-2">
                                         <div className="flex items-center gap-2 text-xs opacity-60">
                                             <Mail className="w-4 h-4" />
-                                            <span>customersupport.tarzify.com</span>
+                                            <span>support@balakiorganic.com</span>
                                         </div>
                                         <div className="flex items-center gap-2 text-xs opacity-60 italic">
-                                            <span className="font-bold">Web:</span> tarzify.tarzify.com
+                                            <span className="font-bold">Web:</span> balakiorganic.com
                                         </div>
                                     </div>
                                 </div>
@@ -257,7 +257,7 @@ export const ReceiptModal = ({ order, onClose }: { order: any, onClose: () => vo
                     <div className="p-10 flex flex-col md:flex-row items-center justify-between gap-6 border-t border-gray-100 bg-gray-50/50">
                         <div className="text-center md:text-left">
                             <p className="font-black text-sm tracking-tighter">AUTHENTIC PREMIUM INVOICE</p>
-                            <p className="text-[10px] opacity-40 uppercase font-bold tracking-widest">© 2026 TARZIFY Logisitics</p>
+                            <p className="text-[10px] opacity-40 uppercase font-bold tracking-widest">© 2026 BALAKI ORGANIC Store</p>
                         </div>
                         <button
                             onClick={() => window.print()}

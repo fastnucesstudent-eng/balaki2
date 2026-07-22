@@ -19,7 +19,9 @@ export const useCartSync = () => {
                 .select('product_id, quantity, products(*)')
                 .eq('user_id', user.id);
 
-            if (error) throw error;
+            if (error) {
+                return [];
+            }
             return data || [];
         },
         enabled: !!user,

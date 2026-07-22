@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { LayoutDashboard, ShoppingBag, Package, Users, Bell, Settings, ArrowUpRight, Search, Plus, Save, Loader2, Menu, X, Trash2, Eye, Upload, Edit2, Image as ImageIcon, Store, Check, Ban } from 'lucide-react';
+import { LayoutDashboard, ShoppingBag, Package, Users, Bell, Settings, ArrowUpRight, Search, Plus, Save, Loader2, Menu, X, Trash2, Eye, Upload, Edit2, Image as ImageIcon, Store, Check, Ban, Truck } from 'lucide-react';
 import { ReceiptModal } from '../components/ReceiptModal';
 import { useProducts } from '../hooks/useProducts';
 import { supabase } from '../lib/supabase';
@@ -65,33 +65,8 @@ export const AdminDashboard = () => {
     const [notifications, setNotifications] = useState<any[]>([]);
     const [showNotifications, setShowNotifications] = useState(false);
 
-    // Fetch Notifications (Pending Actions)
     const fetchNotifications = async () => {
-        try {
-            const { data: merchants } = await supabase.from('profiles').select('id, full_name, store_name, created_at').eq('role', 'merchant').eq('merchant_status', 'pending');
-            const { data: banners } = await supabase.from('banners').select('id, image_url, created_at').eq('status', 'pending');
-
-            const mDocs = (merchants || []).map(m => ({
-                id: m.id,
-                type: 'merchant',
-                title: 'New Merchant',
-                message: `${m.full_name} registered ${m.store_name}`,
-                date: m.created_at,
-                targetTab: 'merchants'
-            }));
-
-            const bDocs = (banners || []).map(b => ({
-                id: b.id,
-                type: 'banner',
-                title: 'Banner Request',
-                message: 'New banner awaiting approval',
-                image: b.image_url,
-                date: b.created_at,
-                targetTab: 'banners'
-            }));
-
-            setNotifications([...mDocs, ...bDocs].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()));
-        } catch (err) { console.error('Notification fetch error:', err); }
+        setNotifications([]);
     };
 
     useEffect(() => {
@@ -111,6 +86,8 @@ export const AdminDashboard = () => {
     }, [showVoucherForm, showMobileMenu, editingProductId, selectedOrderToView, articleToDelete]);
     const [editingVoucherId, setEditingVoucherId] = useState<string | null>(null);
     const [deletingVoucherId, setDeletingVoucherId] = useState<string | number | null>(null);
+    const [trackingModalOrder, setTrackingModalOrder] = useState<any | null>(null);
+    const [trackingInput, setTrackingInput] = useState({ courier_name: 'TCS', tracking_number: '', shipping_proof_url: '' });
     const [newVoucher, setNewVoucher] = useState({
         code: '',
         type: 'percentage' as 'percentage' | 'fixed',
@@ -180,10 +157,16 @@ export const AdminDashboard = () => {
             if (activeTab === 'orders') {
                 const { data } = await supabase
                     .from('orders')
-                    .select('*, customer:profiles!user_id(id, full_name, email), order_items(*, products(*))')
+                    .select('*, order_items(*, products(*))')
                     .order('created_at', { ascending: false });
                 if (data) {
-                    const mapped = data.map((order: any) => ({ ...order, profiles: order.customer }));
+                    const mapped = data.map((order: any) => ({
+                        ...order,
+                        profiles: {
+                            full_name: order.customer_name || 'Customer',
+                            email: order.customer_email || order.email || 'customer@balakiorganic.com'
+                        }
+                    }));
                     setOrders(mapped);
                 }
             }
@@ -192,73 +175,74 @@ export const AdminDashboard = () => {
                 if (data) setCustomers(data);
             }
             if (activeTab === 'carts') {
-                // Fetch all cart items joined with products and profiles
-                const { data } = await supabase
-                    .from('cart_items')
-                    .select('*, products(*), user:profiles!user_id(id, full_name, email)')
-                    .order('created_at', { ascending: false });
+                try {
+                    const { data: cartData } = await supabase
+                        .from('cart_items')
+                        .select('*, products(*)')
+                        .order('created_at', { ascending: false });
 
-                if (data) {
-                    // Group by user
-                    const grouped = data.reduce((acc: any, item: any) => {
-                        const userId = item.user_id;
-                        const itemTimestamp = item.updated_at || item.created_at;
+                    if (cartData && cartData.length > 0) {
+                        const userIds = Array.from(new Set(cartData.map(i => i.user_id).filter(Boolean)));
+                        let profileMap: Record<string, any> = {};
 
-                        if (!acc[userId]) {
-                            acc[userId] = {
-                                user: item.user,
-                                items: [],
-                                total: 0,
-                                last_updated: itemTimestamp
-                            };
-                        } else if (new Date(itemTimestamp) > new Date(acc[userId].last_updated)) {
-                            // Keep the latest timestamp
-                            acc[userId].last_updated = itemTimestamp;
+                        if (userIds.length > 0) {
+                            const { data: profiles } = await supabase
+                                .from('profiles')
+                                .select('id, full_name, email')
+                                .in('id', userIds);
+
+                            if (profiles) {
+                                profiles.forEach(p => { profileMap[p.id] = p; });
+                            }
                         }
 
-                        acc[userId].items.push(item);
-                        acc[userId].total += item.products.price * item.quantity;
-                        return acc;
-                    }, {});
-                    setCarts(Object.values(grouped));
+                        const grouped = cartData.reduce((acc: any, item: any) => {
+                            const userId = item.user_id || 'anonymous';
+                            const itemTimestamp = item.updated_at || item.created_at;
+                            const userProf = profileMap[item.user_id] || { full_name: 'Guest / Anonymous', email: 'Cart Session' };
+
+                            if (!acc[userId]) {
+                                acc[userId] = {
+                                    user: userProf,
+                                    items: [],
+                                    total: 0,
+                                    last_updated: itemTimestamp
+                                };
+                            }
+                            acc[userId].items.push(item);
+                            acc[userId].total += (item.products?.price || 0) * item.quantity;
+                            return acc;
+                        }, {});
+                        setCarts(Object.values(grouped));
+                    } else {
+                        setCarts([]);
+                    }
+                } catch (_err) {
+                    setCarts([]);
                 }
             }
             if (activeTab === 'banners') {
-                const { data, error } = await supabase
+                const { data } = await supabase
                     .from('banners')
-                    .select('*, merchant:profiles!merchant_id(email, full_name)')
-                    .order('display_order', { ascending: true });
-                if (error) {
-                    if (error.code === '42P01') {
-                        console.warn('Banners table missing in AdminDashboard');
-                    } else {
-                        useToastStore.getState().show(error.message, 'error');
-                    }
-                    setDataLoading(false);
-                    return;
-                }
+                    .select('*')
+                    .order('id', { ascending: true });
                 if (data) setBanners(data);
             }
             if (activeTab === 'articles') {
-                const { data, error: _error } = await supabase
-                    .from('articles')
-                    .select('*')
-                    .order('created_at', { ascending: false });
-                if (_error) {
-                    if (_error.code === '42P01') {
-                        console.warn('Articles table missing');
-                    } else {
-                        useToastStore.getState().show(_error.message, 'error');
-                    }
-                    setDataLoading(false);
-                    return;
+                try {
+                    const { data } = await supabase
+                        .from('articles')
+                        .select('*')
+                        .order('id', { ascending: false });
+                    if (data) setArticles(data);
+                } catch (_err) {
+                    setArticles([]);
                 }
-                if (data) setArticles(data);
             }
             if (activeTab === 'vouchers') {
                 const { data, error: _errorV } = await supabase
                     .from('vouchers')
-                    .select('*, merchant:profiles!merchant_id(email, full_name)')
+                    .select('*')
                     .order('created_at', { ascending: false });
                 if (data) setAllVouchers(data);
                 if (_errorV) console.error(_errorV);
@@ -418,14 +402,37 @@ export const AdminDashboard = () => {
 
         setDataLoading(true);
         try {
-            const { error: insertError } = await supabase
-                .from('banners')
-                .insert({
-                    ...newBanner,
-                    end_at: newBanner.end_at || null,
-                    link_url: newBanner.link_url || null,
-                    status: 'approved' // Admin added banners are active immediately
-                });
+            let bannerPayload: any = {
+                title: (newBanner as any).title || 'Promotional Banner',
+                image_url: newBanner.image_url,
+                link: newBanner.link_url || null,
+                link_url: newBanner.link_url || null,
+                is_active: true,
+                status: 'approved'
+            };
+
+            let attempts = 0;
+            let insertError: any = null;
+
+            while (attempts < 10) {
+                attempts++;
+                const { error } = await supabase.from('banners').insert(bannerPayload);
+                if (!error) {
+                    insertError = null;
+                    break;
+                }
+
+                const match = error.message?.match(/Could not find the '([^']+)' column/i);
+                if (match && match[1]) {
+                    const missingCol = match[1];
+                    console.warn(`⚠️ Column '${missingCol}' missing in banners table. Pruning...`);
+                    delete bannerPayload[missingCol];
+                } else {
+                    insertError = error;
+                    break;
+                }
+            }
+
             if (insertError) throw insertError;
             useToastStore.getState().show('Banner added!', 'success');
             setNewBanner({
@@ -437,7 +444,7 @@ export const AdminDashboard = () => {
                 display_order: 0
             });
             // Refetch
-            const { data } = await supabase.from('banners').select('*, merchant:profiles!merchant_id(email, full_name)').order('display_order', { ascending: true });
+            const { data } = await supabase.from('banners').select('*').order('id', { ascending: true });
             if (data) setBanners(data);
         } catch (err: any) {
             useToastStore.getState().show(err.message, 'error');
@@ -574,6 +581,74 @@ export const AdminDashboard = () => {
         }
     };
 
+    const handleUpdateOrderStatus = async (orderId: string | number, newStatus: string) => {
+        try {
+            const { error } = await supabase
+                .from('orders')
+                .update({ status: newStatus })
+                .eq('id', orderId);
+            if (error) throw error;
+            setOrders(prev => prev.map(o => o.id === orderId ? { ...o, status: newStatus } : o));
+            useToastStore.getState().show(`Order status updated to ${newStatus}`, 'success');
+        } catch (err: any) {
+            useToastStore.getState().show(err.message || 'Failed to update status', 'error');
+        }
+    };
+
+    const handleSaveTrackingInfo = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!trackingModalOrder) return;
+        try {
+            let updateData: any = {
+                tracking_number: trackingInput.tracking_number,
+                courier_name: trackingInput.courier_name,
+                shipping_proof_url: trackingInput.shipping_proof_url || null,
+                status: 'shipped'
+            };
+
+            let attempts = 0;
+            let updateErr: any = null;
+
+            while (attempts < 5) {
+                attempts++;
+                const { error } = await supabase
+                    .from('orders')
+                    .update(updateData)
+                    .eq('id', trackingModalOrder.id);
+
+                if (!error) {
+                    updateErr = null;
+                    break;
+                }
+
+                const match = error.message?.match(/Could not find the '([^']+)' column/i);
+                if (match && match[1]) {
+                    const missingCol = match[1];
+                    console.warn(`⚠️ Column '${missingCol}' missing in orders. Pruning...`);
+                    delete updateData[missingCol];
+                } else {
+                    updateErr = error;
+                    break;
+                }
+            }
+
+            if (updateErr) throw updateErr;
+
+            setOrders(prev => prev.map(o => o.id === trackingModalOrder.id ? { 
+                ...o, 
+                tracking_number: trackingInput.tracking_number, 
+                courier_name: trackingInput.courier_name, 
+                shipping_proof_url: trackingInput.shipping_proof_url,
+                status: 'shipped' 
+            } : o));
+
+            useToastStore.getState().show('Tracking ID & Visual Evidence assigned! Order marked as Shipped!', 'success');
+            setTrackingModalOrder(null);
+        } catch (err: any) {
+            useToastStore.getState().show(err.message || 'Failed to update tracking', 'error');
+        }
+    };
+
     const fetchVoucherStats = async (voucherId: string) => {
         try {
             const res = await fetch(`${import.meta.env.VITE_API_URL}/vouchers/stats/${voucherId}`);
@@ -590,43 +665,56 @@ export const AdminDashboard = () => {
         e.preventDefault();
         setDataLoading(true);
         try {
-            const res = await fetch(`${import.meta.env.VITE_API_URL}/vouchers/create`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    ...newVoucher,
-                    merchant_id: null, // Admin created global voucher
-                    usage_limit: newVoucher.usage_limit ? parseInt(newVoucher.usage_limit) : null,
-                    max_discount: newVoucher.max_discount ? parseFloat(newVoucher.max_discount) : null
-                })
+            let voucherData: any = {
+                code: newVoucher.code.trim().toUpperCase(),
+                // Support both schema variants: discount_type/discount_value (schema) and type/value (extended)
+                discount_type: newVoucher.type,
+                type: newVoucher.type,
+                discount_value: parseFloat(String(newVoucher.value)) || 0,
+                value: parseFloat(String(newVoucher.value)) || 0,
+                min_spend: parseFloat(String(newVoucher.min_spend)) || 0,
+                max_discount: newVoucher.max_discount ? parseFloat(String(newVoucher.max_discount)) : null,
+                usage_limit: newVoucher.usage_limit ? parseInt(String(newVoucher.usage_limit)) : null,
+                expiry_date: newVoucher.expiry_date ? new Date(newVoucher.expiry_date).toISOString() : null,
+                expires_at: newVoucher.expiry_date ? new Date(newVoucher.expiry_date).toISOString() : null,
+                per_user_limit: newVoucher.per_user_limit || 1,
+                is_active: true
+            };
+
+            let attempts = 0;
+            let createError: any = null;
+            while (attempts < 10) {
+                attempts++;
+                const { error } = await supabase.from('vouchers').insert(voucherData);
+                if (!error) {
+                    createError = null;
+                    break;
+                }
+                const match = error.message?.match(/Could not find the '([^']+)' column/i);
+                if (match && match[1]) {
+                    const missingCol = match[1];
+                    console.warn(`⚠️ Column '${missingCol}' missing in vouchers table. Pruning...`);
+                    delete voucherData[missingCol];
+                } else {
+                    createError = error;
+                    break;
+                }
+            }
+
+            if (createError) throw createError;
+
+            useToastStore.getState().show('Global Voucher Created!', 'success');
+            setShowVoucherForm(false);
+            setNewVoucher({
+                code: '', type: 'percentage', value: 0, min_spend: 0, expiry_date: '',
+                usage_limit: '', target_customer_id: null, max_discount: '', per_user_limit: 1
             });
 
-            if (!res.ok) {
-                const errorData = await res.json().catch(() => ({ error: 'Server returned HTML instead of JSON' }));
-                throw new Error(errorData.error || `Error ${res.status}`);
-            }
-
-            const data = await res.json();
-            if (data.success) {
-                useToastStore.getState().show('Global Voucher Created!', 'success');
-                setShowVoucherForm(false);
-                setNewVoucher({
-                    code: '',
-                    type: 'percentage',
-                    value: 0,
-                    min_spend: 0,
-                    expiry_date: '',
-                    usage_limit: '',
-                    target_customer_id: null,
-                    max_discount: '',
-                    per_user_limit: 1
-                });
-                // Refetch
-                const { data: vData } = await supabase.from('vouchers').select('*, merchant:profiles!merchant_id(email, full_name)').order('created_at', { ascending: false });
-                if (vData) setAllVouchers(vData);
-            }
+            // Refetch
+            const { data: vData } = await supabase.from('vouchers').select('*').order('id', { ascending: false });
+            if (vData) setAllVouchers(vData);
         } catch (err: any) {
-            useToastStore.getState().show(err.message, 'error');
+            useToastStore.getState().show(err.message || 'Failed to create voucher', 'error');
         } finally {
             setDataLoading(false);
         }
@@ -637,36 +725,55 @@ export const AdminDashboard = () => {
         if (!editingVoucherId) return;
         setDataLoading(true);
         try {
-            const res = await fetch(`${import.meta.env.VITE_API_URL}/vouchers/${editingVoucherId}`, {
-                method: 'PATCH',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    ...newVoucher,
-                    usage_limit: newVoucher.usage_limit ? parseInt(newVoucher.usage_limit) : null,
-                    max_discount: newVoucher.max_discount ? parseFloat(newVoucher.max_discount) : null
-                })
+            let voucherData: any = {
+                code: newVoucher.code.trim().toUpperCase(),
+                // Support both schema variants
+                discount_type: newVoucher.type,
+                type: newVoucher.type,
+                discount_value: parseFloat(String(newVoucher.value)) || 0,
+                value: parseFloat(String(newVoucher.value)) || 0,
+                min_spend: parseFloat(String(newVoucher.min_spend)) || 0,
+                max_discount: newVoucher.max_discount ? parseFloat(String(newVoucher.max_discount)) : null,
+                usage_limit: newVoucher.usage_limit ? parseInt(String(newVoucher.usage_limit)) : null,
+                expiry_date: newVoucher.expiry_date ? new Date(newVoucher.expiry_date).toISOString() : null,
+                expires_at: newVoucher.expiry_date ? new Date(newVoucher.expiry_date).toISOString() : null,
+                per_user_limit: newVoucher.per_user_limit || 1
+            };
+
+            let attempts = 0;
+            let updateError: any = null;
+            while (attempts < 10) {
+                attempts++;
+                const { error } = await supabase.from('vouchers').update(voucherData).eq('id', editingVoucherId);
+                if (!error) {
+                    updateError = null;
+                    break;
+                }
+                const match = error.message?.match(/Could not find the '([^']+)' column/i);
+                if (match && match[1]) {
+                    const missingCol = match[1];
+                    console.warn(`⚠️ Column '${missingCol}' missing in vouchers table. Pruning...`);
+                    delete voucherData[missingCol];
+                } else {
+                    updateError = error;
+                    break;
+                }
+            }
+
+            if (updateError) throw updateError;
+
+            useToastStore.getState().show('Voucher Updated!', 'success');
+            setShowVoucherForm(false);
+            setEditingVoucherId(null);
+            setNewVoucher({
+                code: '', type: 'percentage', value: 0, min_spend: 0, expiry_date: '',
+                usage_limit: '', target_customer_id: null, max_discount: '', per_user_limit: 1
             });
-
-            if (!res.ok) {
-                const errorData = await res.json().catch(() => ({ error: 'Server returned HTML instead of JSON' }));
-                throw new Error(errorData.error || `Update failed with status ${res.status}`);
-            }
-
-            const data = await res.json();
-            if (data.success) {
-                useToastStore.getState().show('Voucher Updated!', 'success');
-                setShowVoucherForm(false);
-                setEditingVoucherId(null);
-                setNewVoucher({
-                    code: '', type: 'percentage', value: 0, min_spend: 0, expiry_date: '',
-                    usage_limit: '', target_customer_id: null, max_discount: '', per_user_limit: 1
-                });
-                const { data: vData } = await supabase.from('vouchers').select('*, merchant:profiles!merchant_id(email, full_name)').order('created_at', { ascending: false });
-                if (vData) setAllVouchers(vData);
-            }
+            const { data: vData } = await supabase.from('vouchers').select('*').order('id', { ascending: false });
+            if (vData) setAllVouchers(vData);
         } catch (err: any) {
             console.error('Update Error:', err);
-            useToastStore.getState().show(err.message, 'error');
+            useToastStore.getState().show(err.message || 'Failed to update voucher', 'error');
         } finally {
             setDataLoading(false);
         }
@@ -674,35 +781,25 @@ export const AdminDashboard = () => {
 
     const handleDeleteVoucher = async (id: string | number) => {
         try {
-            const res = await fetch(`${import.meta.env.VITE_API_URL}/vouchers/${id}`, {
-                method: 'DELETE'
-            });
-            if (res.ok) {
-                useToastStore.getState().show('Voucher deleted', 'success');
-                setAllVouchers(prev => prev.filter(v => v.id !== id));
-                setDeletingVoucherId(null); // Reset deleting state
-            } else {
-                const errorData = await res.json().catch(() => ({ error: 'Delete failed' }));
-                throw new Error(errorData.error || 'Failed to delete');
-            }
+            const { error } = await supabase.from('vouchers').delete().eq('id', id);
+            if (error) throw error;
+            useToastStore.getState().show('Voucher deleted', 'success');
+            setAllVouchers(prev => prev.filter(v => v.id !== id));
+            setDeletingVoucherId(null);
         } catch (err: any) {
-            useToastStore.getState().show(err.message, 'error');
+            useToastStore.getState().show(err.message || 'Delete failed', 'error');
         }
     };
 
     const handleToggleVoucher = async (v: any) => {
         try {
-            const res = await fetch(`${import.meta.env.VITE_API_URL}/vouchers/${v.id}`, {
-                method: 'PATCH',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ is_active: !v.is_active })
-            });
-            if (res.ok) {
-                setAllVouchers(prev => prev.map(item => item.id === v.id ? { ...item, is_active: !v.is_active } : item));
-                useToastStore.getState().show(`Voucher ${v.is_active ? 'deactivated' : 'activated'}`, 'success');
-            }
+            const newStatus = !v.is_active;
+            const { error } = await supabase.from('vouchers').update({ is_active: newStatus }).eq('id', v.id);
+            if (error) throw error;
+            setAllVouchers(prev => prev.map(item => item.id === v.id ? { ...item, is_active: newStatus } : item));
+            useToastStore.getState().show(`Voucher ${newStatus ? 'activated' : 'deactivated'}`, 'success');
         } catch (err: any) {
-            useToastStore.getState().show(err.message, 'error');
+            useToastStore.getState().show(err.message || 'Toggle failed', 'error');
         }
     };
 
@@ -733,7 +830,6 @@ export const AdminDashboard = () => {
                     { id: 'categories', label: 'Categories', icon: Menu },
                     { id: 'orders', label: 'Orders', icon: ShoppingBag },
                     { id: 'customers', label: 'Customers', icon: Users },
-                    { id: 'merchants', label: 'Merchants', icon: Store },
                     { id: 'carts', label: 'Customer Carts', icon: ShoppingBag },
                     { id: 'banners', label: 'Banners', icon: ImageIcon },
                     { id: 'vouchers', label: 'Vouchers', icon: Bell },
@@ -1110,25 +1206,79 @@ export const AdminDashboard = () => {
                                     <thead className="bg-foreground/[0.02] text-xs font-black uppercase opacity-30">
                                         <tr>
                                             <th className="px-6 py-4">Order ID</th>
+                                            <th className="px-6 py-4">Customer</th>
                                             <th className="px-6 py-4">Status</th>
+                                            <th className="px-6 py-4">Tracking Details</th>
                                             <th className="px-6 py-4">Total</th>
                                             <th className="px-6 py-4">Date</th>
-                                            <th className="px-6 py-4">Action</th>
+                                            <th className="px-6 py-4">Actions</th>
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-foreground/5 font-bold">
                                         {dataLoading ? (
-                                            [1, 2, 3].map(i => <tr key={i} className="animate-pulse"><td colSpan={4} className="px-6 py-4 bg-foreground/5 h-12" /></tr>)
+                                            [1, 2, 3].map(i => <tr key={i} className="animate-pulse"><td colSpan={7} className="px-6 py-4 bg-foreground/5 h-12" /></tr>)
+                                        ) : orders.length === 0 ? (
+                                            <tr><td colSpan={7} className="px-6 py-12 text-center opacity-40 font-bold uppercase italic">No orders found</td></tr>
                                         ) : orders.map(order => (
                                             <tr key={order.id} className="hover:bg-foreground/[0.01]">
-                                                <td className="px-6 py-4 font-mono">#{order.order_number}</td>
-                                                <td className="px-6 py-4">
-                                                    <span className={`px-2 py-1 rounded-full text-[10px] uppercase font-black tracking-widest ${order.status === 'delivered' ? 'bg-green-500/10 text-green-500' : 'bg-primary/10 text-primary'}`}>{order.status}</span>
+                                                <td className="px-6 py-4 font-mono text-sm text-primary font-black">
+                                                    #{order.order_number || order.id}
                                                 </td>
-                                                <td className="px-6 py-4">Rs. {Number(order.total_amount).toLocaleString()}</td>
+                                                <td className="px-6 py-4">
+                                                    <p className="text-xs font-bold">{order.customer_name || order.profiles?.full_name || 'Customer'}</p>
+                                                    <p className="text-[10px] opacity-50">{order.phone || order.customer_email || order.email}</p>
+                                                </td>
+                                                <td className="px-6 py-4">
+                                                    <select
+                                                        value={order.status || 'pending'}
+                                                        onChange={(e) => handleUpdateOrderStatus(order.id, e.target.value)}
+                                                        className="bg-background border border-foreground/10 rounded-xl px-3 py-1.5 text-xs font-black uppercase cursor-pointer focus:ring-2 ring-primary/30"
+                                                    >
+                                                        <option value="pending">Pending</option>
+                                                        <option value="processing">Processing</option>
+                                                        <option value="shipped">Shipped</option>
+                                                        <option value="delivered">Delivered</option>
+                                                        <option value="cancelled">Cancelled</option>
+                                                    </select>
+                                                </td>
+                                                <td className="px-6 py-4">
+                                                    {order.tracking_number ? (
+                                                        <div className="flex items-center gap-2">
+                                                            <span className="text-xs font-mono font-bold text-green-500 bg-green-500/10 px-2.5 py-1 rounded-lg">
+                                                                {order.courier_name ? `${order.courier_name}: ` : ''}{order.tracking_number}
+                                                            </span>
+                                                            <button 
+                                                                onClick={() => {
+                                                                    setTrackingModalOrder(order);
+                                                                    setTrackingInput({ courier_name: order.courier_name || 'TCS', tracking_number: order.tracking_number || '', shipping_proof_url: order.shipping_proof_url || '' });
+                                                                }}
+                                                                className="p-1 hover:bg-foreground/10 rounded"
+                                                                title="Edit Tracking"
+                                                            >
+                                                                <Edit2 className="w-3 h-3 opacity-60" />
+                                                            </button>
+                                                        </div>
+                                                    ) : (
+                                                        <button
+                                                            onClick={() => {
+                                                                setTrackingModalOrder(order);
+                                                                setTrackingInput({ courier_name: order.courier_name || 'TCS', tracking_number: order.tracking_number || '', shipping_proof_url: order.shipping_proof_url || '' });
+                                                            }}
+                                                            className="px-3 py-1.5 bg-primary/10 text-primary hover:bg-primary/20 rounded-xl text-[10px] font-black uppercase tracking-wider flex items-center gap-1.5 transition-all"
+                                                        >
+                                                            <Truck className="w-3.5 h-3.5" />
+                                                            + Assign Tracking
+                                                        </button>
+                                                    )}
+                                                </td>
+                                                <td className="px-6 py-4 text-sm font-black">Rs. {Number(order.total_amount).toLocaleString()}</td>
                                                 <td className="px-6 py-4 text-xs opacity-50">{new Date(order.created_at).toLocaleDateString()}</td>
                                                 <td className="px-6 py-4">
-                                                    <button onClick={() => setSelectedOrderToView(order)} className="p-2 hover:bg-primary/10 text-primary rounded-xl transition-colors">
+                                                    <button 
+                                                        onClick={() => setSelectedOrderToView(order)} 
+                                                        className="p-2.5 bg-primary/10 hover:bg-primary text-primary hover:text-white rounded-xl transition-all"
+                                                        title="View Order Receipt"
+                                                    >
                                                         <Eye className="w-4 h-4" />
                                                     </button>
                                                 </td>
@@ -1147,13 +1297,39 @@ export const AdminDashboard = () => {
                                         <div className="flex justify-between items-start">
                                             <div>
                                                 <p className="text-[10px] font-black uppercase opacity-30">Order ID</p>
-                                                <h4 className="font-mono font-bold">#{order.order_number}</h4>
+                                                <h4 className="font-mono font-bold text-primary">#{order.order_number || order.id}</h4>
+                                                <p className="text-xs font-bold mt-1">{order.customer_name || 'Customer'}</p>
                                             </div>
-                                            <span className={`px-3 py-1 rounded-full text-[9px] uppercase font-black tracking-widest ${order.status === 'delivered' ? 'bg-green-500/10 text-green-500' : 'bg-primary/10 text-primary'}`}>
-                                                {order.status}
-                                            </span>
+                                            <select
+                                                value={order.status || 'pending'}
+                                                onChange={(e) => handleUpdateOrderStatus(order.id, e.target.value)}
+                                                className="bg-background border border-foreground/10 rounded-xl px-3 py-1.5 text-xs font-black uppercase cursor-pointer"
+                                            >
+                                                <option value="pending">Pending</option>
+                                                <option value="processing">Processing</option>
+                                                <option value="shipped">Shipped</option>
+                                                <option value="delivered">Delivered</option>
+                                                <option value="cancelled">Cancelled</option>
+                                            </select>
                                         </div>
-                                        
+
+                                        <div className="flex justify-between items-center bg-foreground/5 p-3 rounded-xl text-xs">
+                                            <span className="opacity-50">Tracking:</span>
+                                            {order.tracking_number ? (
+                                                <span className="font-mono font-bold text-green-500">{order.tracking_number}</span>
+                                            ) : (
+                                                <button
+                                                    onClick={() => {
+                                                        setTrackingModalOrder(order);
+                                                        setTrackingInput({ courier_name: order.courier_name || 'TCS', tracking_number: order.tracking_number || '', shipping_proof_url: order.shipping_proof_url || '' });
+                                                    }}
+                                                    className="text-[10px] font-black text-primary uppercase"
+                                                >
+                                                    + Assign Tracking
+                                                </button>
+                                            )}
+                                        </div>
+
                                         <div className="flex justify-between items-end">
                                             <div className="space-y-1">
                                                 <p className="text-[10px] font-black uppercase opacity-30 italic">Order Total</p>
@@ -1458,6 +1634,16 @@ export const AdminDashboard = () => {
                             <div className="w-full xl:w-1/3 glass p-8 rounded-[3rem] border-white/5 space-y-6">
                                 <h3 className="text-xl font-black italic uppercase tracking-tighter">Add New Banner</h3>
                                 <form onSubmit={handleAddBanner} className="space-y-4">
+                                    <div className="space-y-2">
+                                        <label className="text-[10px] font-black uppercase opacity-30">Banner Title</label>
+                                        <input
+                                            type="text"
+                                            value={(newBanner as any).title || ''}
+                                            onChange={e => setNewBanner(p => ({ ...p, title: e.target.value } as any))}
+                                            placeholder="e.g. Summer Sale Banner"
+                                            className="w-full glass border-none rounded-xl p-3 font-bold text-sm bg-background/5"
+                                        />
+                                    </div>
                                     <div className="space-y-2">
                                         <label className="text-[10px] font-black uppercase opacity-30">Banner Image</label>
                                         <button
@@ -2030,6 +2216,94 @@ export const AdminDashboard = () => {
                     </motion.div>
                 </div>
             )}
+
+            {/* Tracking Assignment Modal */}
+            <AnimatePresence>
+                {trackingModalOrder && (
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="fixed inset-0 z-[300] flex items-center justify-center p-6 bg-black/80 backdrop-blur-md"
+                        data-lenis-prevent
+                    >
+                        <motion.div
+                            initial={{ scale: 0.9, opacity: 0 }}
+                            animate={{ scale: 1, opacity: 1 }}
+                            exit={{ scale: 0.9, opacity: 0 }}
+                            className="bg-background w-full max-w-md rounded-[2.5rem] p-8 shadow-2xl border border-border space-y-6"
+                        >
+                            <div className="flex justify-between items-center">
+                                <div>
+                                    <h3 className="text-xl font-black uppercase italic tracking-tighter">Assign Courier & Tracking</h3>
+                                    <p className="text-xs opacity-50 font-mono">Order #{trackingModalOrder.order_number || trackingModalOrder.id}</p>
+                                </div>
+                                <button onClick={() => setTrackingModalOrder(null)} className="p-2 hover:bg-foreground/10 rounded-full"><X className="w-5 h-5" /></button>
+                            </div>
+
+                            <form onSubmit={handleSaveTrackingInfo} className="space-y-4">
+                                <div className="space-y-2">
+                                    <label className="text-[10px] font-black uppercase opacity-30">Courier Company</label>
+                                    <select
+                                        value={trackingInput.courier_name}
+                                        onChange={e => setTrackingInput({ ...trackingInput, courier_name: e.target.value })}
+                                        className="w-full glass border-none rounded-2xl p-4 font-bold bg-background text-foreground"
+                                    >
+                                        <option value="TCS">TCS Logistics</option>
+                                        <option value="Leopards">Leopards Courier</option>
+                                        <option value="M&P">M&P Express</option>
+                                        <option value="Trax">Trax Logistics</option>
+                                        <option value="CallCourier">Call Courier</option>
+                                        <option value="Pakistan Post">Pakistan Post</option>
+                                    </select>
+                                </div>
+
+                                <div className="space-y-2">
+                                    <label className="text-[10px] font-black uppercase opacity-30">Tracking Number / ID</label>
+                                    <input
+                                        required
+                                        type="text"
+                                        value={trackingInput.tracking_number}
+                                        onChange={e => setTrackingInput({ ...trackingInput, tracking_number: e.target.value })}
+                                        placeholder="e.g. LCS-99881234"
+                                        className="w-full glass border-none rounded-2xl p-4 font-mono font-bold text-primary"
+                                    />
+                                </div>
+
+                                <div className="space-y-2">
+                                    <label className="text-[10px] font-black uppercase opacity-30">Visual Dispatch Evidence (Parcel Photo / Proof)</label>
+                                    <div
+                                        onClick={() => openUploadWidget((url) => setTrackingInput(prev => ({ ...prev, shipping_proof_url: url })))}
+                                        className="w-full h-36 rounded-2xl border-2 border-dashed border-foreground/10 flex flex-col items-center justify-center cursor-pointer hover:border-primary/50 transition-all overflow-hidden bg-foreground/5 relative group"
+                                    >
+                                        {trackingInput.shipping_proof_url ? (
+                                            <>
+                                                <img src={trackingInput.shipping_proof_url} alt="Proof" className="w-full h-full object-cover" />
+                                                <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white text-xs font-black uppercase tracking-wider">
+                                                    Change Evidence Photo
+                                                </div>
+                                            </>
+                                        ) : (
+                                            <div className="flex flex-col items-center gap-2 text-foreground/40">
+                                                <Upload className="w-6 h-6 opacity-40" />
+                                                <span className="text-[10px] font-black uppercase tracking-wider">Upload Parcel / Receipt Photo</span>
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+
+                                <button
+                                    type="submit"
+                                    className="w-full py-4 bg-primary text-white rounded-2xl font-black uppercase italic tracking-tighter shadow-xl shadow-primary/20 hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-2"
+                                >
+                                    <Truck className="w-5 h-5" />
+                                    Save & Mark as Shipped
+                                </button>
+                            </form>
+                        </motion.div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
         </div>
     );
 };

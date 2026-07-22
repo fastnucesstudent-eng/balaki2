@@ -34,7 +34,7 @@ export const PrivacySecurityModal = ({ onClose }: { onClose: () => void }) => {
 
             if (!token) throw new Error("No active session found.");
 
-            const API_URL = import.meta.env.VITE_API_URL || 'https://backend.tarzify.com/api';
+            const API_URL = import.meta.env.VITE_API_URL || 'https://backend.balakiorganic.com/api';
             const response = await fetch(`${API_URL}/update-password`, {
                 method: 'POST',
                 headers: {
@@ -158,7 +158,7 @@ export const PrivacySecurityModal = ({ onClose }: { onClose: () => void }) => {
                     <div className="pt-6 border-t border-white/5 space-y-4">
                         <h3 className="text-[10px] font-black uppercase tracking-widest opacity-50">Data & Privacy</h3>
                         <div className="p-4 bg-foreground/5 rounded-2xl space-y-2">
-                            <p className="text-[10px] font-bold opacity-60">To request account deletion or data portability, please contact our support team at <span className="text-primary italic">customersupport@tarzify.com</span></p>
+                            <p className="text-[10px] font-bold opacity-60">To request account deletion or data portability, please contact our support team at <span className="text-primary italic">support@balakiorganic.com</span></p>
                         </div>
                     </div>
                 </div>

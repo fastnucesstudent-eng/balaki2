@@ -15,7 +15,7 @@ interface ProductCardProps {
 }
 
 export const ProductCard = memo(({ product, onAddToCart, onQuickView, storeSlug }: ProductCardProps) => {
-    const { name, price, image, image_url, category, stock = 1, sku, image_urls = [], compare_at_price, avg_rating, pricing_matrix, sale_percentage = 0, is_free_delivery = false, total_reviews, dynamic_attributes, is_used = false } = product;
+    const { name, price, image, image_url, category, stock = 1, sku, image_urls = [], compare_at_price, avg_rating, pricing_matrix, sale_percentage = 0, is_free_delivery = false, total_reviews, dynamic_attributes } = product;
     const finalImage = image || image_url;
     const addItem = useCartStore((state) => state.addItem);
     const toast = useToastStore();
@@ -77,25 +77,24 @@ export const ProductCard = memo(({ product, onAddToCart, onQuickView, storeSlug 
             <div className="relative aspect-square md:aspect-[4/5] overflow-hidden bg-[#f3f4f6] dark:bg-zinc-800/20">
                 {/* Badges Overlay */}
                 <div className="absolute top-2 left-2 md:top-4 md:left-4 flex flex-col items-start gap-1 z-10">
-                    {isOOS && (
+                    {isOOS ? (
                         <div className="bg-red-500 text-white text-[7px] md:text-[9px] font-black px-1.5 md:px-2 py-0.5 rounded-full uppercase tracking-tighter shadow-lg">
                             Sold Out
                         </div>
+                    ) : (
+                        <div className="bg-emerald-600 text-white text-[7px] md:text-[9px] font-black px-1.5 md:px-2 py-0.5 rounded-full uppercase tracking-tighter shadow-lg flex items-center gap-1 border border-white/20">
+                            🌿 100% Organic
+                        </div>
                     )}
                     {discount > 0 && !isOOS && (
-                        <div className="bg-[#ff5e00] text-white text-[7px] md:text-[9px] font-black px-1.5 md:px-2 py-0.5 rounded-full uppercase tracking-tighter shadow-lg">
+                        <div className="bg-accent text-white text-[7px] md:text-[9px] font-black px-1.5 md:px-2 py-0.5 rounded-full uppercase tracking-tighter shadow-lg">
                             -{discount}%
                         </div>
                     )}
                     {is_free_delivery && (
-                        <div className="bg-green-500 text-white text-[6px] md:text-[8px] font-black px-1.5 md:px-2 py-0.5 rounded-full uppercase tracking-tighter flex items-center gap-0.5 shadow-lg border border-white/20">
+                        <div className="bg-primary text-white text-[6px] md:text-[8px] font-black px-1.5 md:px-2 py-0.5 rounded-full uppercase tracking-tighter flex items-center gap-0.5 shadow-lg border border-white/20">
                             <span className="w-1 h-1 bg-white rounded-full animate-pulse" />
                             Free Delivery
-                        </div>
-                    )}
-                    {is_used && (
-                        <div className="bg-accent text-white text-[7px] md:text-[9px] font-black px-2 md:px-3 py-1 rounded-full uppercase tracking-tighter shadow-lg border border-white/20 animate-pulse">
-                            USED
                         </div>
                     )}
                 </div>
@@ -153,7 +152,7 @@ export const ProductCard = memo(({ product, onAddToCart, onQuickView, storeSlug 
                     <button
                         onClick={handleAddToCart}
                         disabled={isOOS}
-                        className={`w-9 h-9 md:w-12 md:h-12 flex items-center justify-center rounded-xl md:rounded-2xl transition-all active:scale-90 ${isOOS ? 'bg-gray-100 dark:bg-zinc-800 text-gray-300 dark:text-zinc-600 cursor-not-allowed' : 'bg-[#ff5e00] text-white shadow-lg shadow-[#ff5e00]/20 hover:scale-110'}`}
+                        className={`w-9 h-9 md:w-12 md:h-12 flex items-center justify-center rounded-xl md:rounded-2xl transition-all active:scale-90 ${isOOS ? 'bg-gray-100 dark:bg-zinc-800 text-gray-300 dark:text-zinc-600 cursor-not-allowed' : 'bg-primary text-white shadow-lg shadow-primary/20 hover:scale-110'}`}
                     >
                         <ShoppingCart className="w-4 h-4 md:w-6 md:h-6" />
                     </button>

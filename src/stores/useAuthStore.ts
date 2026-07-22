@@ -16,9 +16,10 @@ interface AuthState {
     setUser: (user: User | null) => void;
     signOut: () => Promise<void>;
     initialize: () => Promise<void>;
+    refreshProfile: () => Promise<void>;
 }
 
-export const useAuthStore = create<AuthState>((set) => ({
+export const useAuthStore = create<AuthState>((set, get) => ({
     user: null,
     role: null,
     merchantStatus: null,
@@ -26,6 +27,41 @@ export const useAuthStore = create<AuthState>((set) => ({
     qrCodeUrl: null,
     loading: true,
     setUser: (user) => set({ user, loading: false }),
+    refreshProfile: async () => {
+        const currentUser = get().user;
+        if (!currentUser) return;
+        try {
+            console.log('🔄 Refreshing profile for:', currentUser.email);
+            let { data } = await supabase
+                .from('profiles')
+                .select('id, role, full_name, email, phone')
+                .eq('id', currentUser.id)
+                .maybeSingle();
+
+            if (!data && currentUser.email) {
+                const { data: emailData } = await supabase
+                    .from('profiles')
+                    .select('id, role, full_name, email, phone')
+                    .ilike('email', currentUser.email.trim())
+                    .maybeSingle();
+                data = emailData;
+            }
+
+            const rawRole = (data?.role || '').toLowerCase().trim();
+            const role = (rawRole === 'admin' ? 'admin' : rawRole === 'merchant' ? 'merchant' : 'customer') as any;
+
+            console.log(`✅ Profile refreshed: role = "${role}" (raw DB: "${data?.role}")`);
+
+            set({ 
+                role,
+                merchantStatus: null,
+                storeSlug: null,
+                qrCodeUrl: null
+            });
+        } catch (e) {
+            console.error('Refresh profile error:', e);
+        }
+    },
     signOut: async () => {
         await supabase.auth.signOut();
         set({ user: null, role: null, merchantStatus: null, storeSlug: null, qrCodeUrl: null });
@@ -63,26 +99,41 @@ export const useAuthStore = create<AuthState>((set) => ({
                 console.error('❌ Session fetch error:', sessionError);
             }
 
-            const fetchProfileData = async (userId: string) => {
+            const fetchProfileData = async (userId: string, userEmail?: string) => {
                 try {
-                    // Use standard select + limit(1) instead of single() to avoid signal/abort issues
-                    const { data, error } = await supabase
+                    let { data, error } = await supabase
                         .from('profiles')
-                        .select('role, merchant_status, store_slug, qr_code_url')
+                        .select('id, role, full_name, email, phone')
                         .eq('id', userId)
-                        .limit(1);
+                        .maybeSingle();
 
-                    const profile = data?.[0];
+                    if ((!data || error) && userEmail) {
+                        console.log('🔍 Searching profile by email fallback:', userEmail);
+                        const { data: emailProfile } = await supabase
+                            .from('profiles')
+                            .select('id, role, full_name, email, phone')
+                            .ilike('email', userEmail.trim())
+                            .maybeSingle();
 
-                    if (error) {
-                        console.warn('⚠️ Profile fetch error:', error.message);
-                        return { role: 'customer' as const, status: null, slug: null, qr: null };
+                        if (emailProfile) {
+                            data = emailProfile;
+                            if (emailProfile.id !== userId) {
+                                console.log('🔄 Syncing profile ID in DB to match auth.users ID...');
+                                await supabase.from('profiles').update({ id: userId }).eq('email', userEmail.trim());
+                            }
+                        }
                     }
+
+                    const rawRole = (data?.role || '').toLowerCase().trim();
+                    const role = (rawRole === 'admin' ? 'admin' : rawRole === 'merchant' ? 'merchant' : 'customer') as 'admin' | 'merchant' | 'customer';
+
+                    console.log(`👤 Profile loaded for ${userEmail || userId}: Role = "${role}" (DB raw role: "${data?.role}")`);
+
                     return { 
-                        role: (profile?.role || 'customer') as 'admin' | 'merchant' | 'customer', 
-                        status: profile?.merchant_status || null,
-                        slug: profile?.store_slug || null,
-                        qr: profile?.qr_code_url || null
+                        role, 
+                        status: null,
+                        slug: null,
+                        qr: null
                     };
                 } catch (e) {
                     console.error('❌ Unexpected error fetching profile:', e);
@@ -92,7 +143,7 @@ export const useAuthStore = create<AuthState>((set) => ({
 
             if (session?.user) {
                 console.log('👤 User session found:', session.user.email);
-                const { role, status, slug, qr } = await fetchProfileData(session.user.id);
+                const { role, status, slug, qr } = await fetchProfileData(session.user.id, session.user.email);
                 console.log('🎭 User role:', role, 'Status:', status);
                 set({ user: session.user, role, merchantStatus: status, storeSlug: slug, qrCodeUrl: qr, loading: false });
             } else {
@@ -115,7 +166,7 @@ export const useAuthStore = create<AuthState>((set) => ({
                 }
 
                 if (session?.user) {
-                    const { role, status, slug, qr } = await fetchProfileData(session.user.id);
+                    const { role, status, slug, qr } = await fetchProfileData(session.user.id, session.user.email);
                     set({ user: session.user, role, merchantStatus: status, storeSlug: slug, qrCodeUrl: qr, loading: false });
                 } else {
                     set({ user: null, role: null, merchantStatus: null, storeSlug: null, qrCodeUrl: null, loading: false });

@@ -3,32 +3,26 @@ import React from 'react';
 // This component provides semantic internal linking for SEO and AI crawlers
 // The 'sr-only' Tailwind class hides these links visually but keeps them in the DOM
 // for screen readers, Googlebot, and AI conversational search engines.
-// Using 'sr-only' avoids the harsh SEO penalties associated with 'display: none' hidden text.
 
 export const SeoHiddenLinks: React.FC = () => {
     return (
-        <nav className="sr-only" aria-label="Quick Links for Search Engines">
+        <nav className="sr-only" aria-label="Organic Quick Links for Search Engines">
             <ul>
-                <li><a href="/#catalog">Buy Premium Electronics Online Pakistan</a></li>
-                <li><a href="/?category=Electronics#catalog">Best Wireless Earbuds and Smartwatches</a></li>
-                <li><a href="/?category=Accessories#catalog">Luxury Leather Watches and Accessories</a></li>
-                <li><a href="/?category=Outdoor#catalog">High Performance Outdoor Gear and Flashlights</a></li>
-                <li><a href="/?category=Footwear#catalog">Durable Hiking Boots and Men's Footwear</a></li>
-                <li><a href="/#track-order">Track My Tarzify Order Online TCS Leopards</a></li>
-                <li><a href="/?search=carbon">Elite Carbon Pro X Wireless Headphones</a></li>
-                <li><a href="/?search=solar">Solaris Max Beam High Lumen Flashlight</a></li>
-                <li><a href="/?search=vortex">Vortex G-Series Gaming Mouse</a></li>
-                <li><a href="/?search=fitpulse">FitPulse Active Fitness Tracker</a></li>
-                <li><a href="/?search=travel">CloudSleep Travel Pro Memory Foam Pillow</a></li>
-                <li><a href="/?category=Kitchen#catalog">Modern Kitchen Appliances and Gadgets</a></li>
-                <li><a href="/?category=Home#catalog">Smart Home Decor and Automation</a></li>
-                <li><a href="/?category=Fashion#catalog">Premium Men and Women Fashion Pakistan</a></li>
-                <li><a href="/?category=Beauty#catalog">Authentic Cosmetics and Skincare</a></li>
-                <li><a href="/#about">About Tarzify Pakistan</a></li>
-                <li><a href="/#contact">Tarzify Customer Support Contact</a></li>
-                <li><a href="/#returns">Tarzify Returns and Exchange Policy</a></li>
-                <li><a href="/#shipping">Fast Shipping Cash on Delivery Pakistan</a></li>
-                <li><a href="/?sort=price_low#catalog">Affordable Premium Gifts Online</a></li>
+                <li><a href="/#catalog">Buy 100% Pure Organic Raw Honey Online Pakistan</a></li>
+                <li><a href="/?category=Organic%20Honey%20%26%20Sweets#catalog">Raw Unfiltered Sidr Honey and Acacia Honey</a></li>
+                <li><a href="/?category=Natural%20Oils%20%26%20Ghee#catalog">Cold-Pressed Mustard Oil, Coconut Oil and Desi Ghee</a></li>
+                <li><a href="/?category=Herbal%20Teas%20%26%20Infusions#catalog">Natural Herbal Teas and Organic Wellness Blends</a></li>
+                <li><a href="/?category=Organic%20Spices%20%26%20Herbs#catalog">Farm Fresh Whole and Ground Organic Spices</a></li>
+                <li><a href="/#track-order">Track My Balaki Organic Delivery Online</a></li>
+                <li><a href="/?search=honey">Pure Raw Forest Honey Pakistan</a></li>
+                <li><a href="/?search=oil">Extra Virgin Cold-Pressed Oils</a></li>
+                <li><a href="/?search=tea">Green Tea Herbal Infusions</a></li>
+                <li><a href="/?category=Dry%20Fruits%20%26%20Grains#catalog">Organic Nuts, Almonds and Superfood Seeds</a></li>
+                <li><a href="/?category=Natural%20Skincare#catalog">Chemical-Free Herbal Skincare Products</a></li>
+                <li><a href="/#about">About Balaki Organic Pakistan</a></li>
+                <li><a href="/#contact">Balaki Organic Customer Support Contact</a></li>
+                <li><a href="/#returns">Balaki Organic Returns and Guarantee Policy</a></li>
+                <li><a href="/#shipping">Fast Fresh Express Shipping Cash on Delivery Pakistan</a></li>
             </ul>
         </nav>
     );

@@ -68,7 +68,7 @@ export const Articles = () => {
                     <h2 className="text-3xl md:text-5xl font-black tracking-tighter italic uppercase leading-none">
                         Latest <span className="text-primary italic">Stories</span>
                     </h2>
-                    <p className="text-xs md:text-sm font-bold opacity-40 uppercase tracking-[0.3em]">Insights, Trends & Lifestyle</p>
+                    <p className="text-xs md:text-sm font-bold opacity-40 uppercase tracking-[0.3em]">Insights & Organic Living</p>
                 </motion.div>
                 <motion.button
                     initial={{ opacity: 0, x: 20 }}
@@ -184,10 +184,10 @@ export const Articles = () => {
 
                                     <div className="mt-16 pt-8 border-t border-gray-100 dark:border-white/5 flex flex-col md:flex-row items-center justify-between gap-6">
                                         <div className="flex items-center gap-3">
-                                            <div className="w-10 h-10 rounded-full bg-primary flex items-center justify-center text-white font-black italic">T</div>
+                                            <div className="w-10 h-10 rounded-full bg-primary flex items-center justify-center text-white font-black italic">B</div>
                                             <div>
                                                 <p className="text-[10px] font-black uppercase opacity-40">Published By</p>
-                                                <p className="text-xs font-black uppercase tracking-wider text-foreground">Tarzify Editorial</p>
+                                                <p className="text-xs font-black uppercase tracking-wider text-foreground">Balaki Organic Editorial</p>
                                             </div>
                                         </div>
                                         <button 

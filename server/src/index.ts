@@ -13,7 +13,6 @@ import productsRouter from './routes/products';
 import bannersRouter from './routes/banners';
 import feedRouter from './routes/feed';
 import vouchersRouter from './routes/vouchers';
-import merchantsRouter from './routes/merchants';
 import { supabase } from './lib/supabase';
 
 const app = express();
@@ -24,18 +23,20 @@ app.use(process.env.NODE_ENV === 'production' ? morgan('combined') : morgan('dev
 // CORS/Security Middleware - must be at the top
 app.use((req, res, next) => {
     const origin = req.headers.origin;
+
+    const allowedOrigins = [
+        'https://balakiorganic.vercel.app',
+        'https://www.balakiorganic.vercel.app',
+        process.env.FRONTEND_URL,
+    ].filter(Boolean);
+
     if (origin) {
-        // Log all origins for debugging
-        console.log(`[CORS ATTEMPT] Origin: ${origin} | URL: ${req.url}`);
+        const isAllowed =
+            allowedOrigins.includes(origin) ||
+            origin.endsWith('.vercel.app') ||
+            (process.env.NODE_ENV !== 'production' && origin.includes('localhost'));
 
-        const allowedOrigins = [
-            'https://tarzify.com',
-            'https://www.tarzify.com',
-            'https://backend.tarzify.com',
-            process.env.FRONTEND_URL
-        ].filter(Boolean);
-
-        if (allowedOrigins.includes(origin) || origin.endsWith('.vercel.app') || (process.env.NODE_ENV !== 'production' && origin.includes('localhost'))) {
+        if (isAllowed) {
             res.header('Access-Control-Allow-Origin', origin);
             res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS');
             res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With');
@@ -43,12 +44,12 @@ app.use((req, res, next) => {
         }
     }
 
-    // Handle OPTIONS preflight immediately
     if (req.method === 'OPTIONS') {
         return res.status(200).end();
     }
     next();
 });
+
 
 const isDevelopment = process.env.NODE_ENV !== 'production';
 const scriptSrcDirectives = ["'self'", "'unsafe-inline'", "https://*.supabasedemo.com", "https://*.supabase.co"];
@@ -80,7 +81,6 @@ app.use('/api/shipping', shippingRouter);
 app.use('/api/products', productsRouter);
 app.use('/api/banners', bannersRouter);
 app.use('/api/vouchers', vouchersRouter);
-app.use('/api/merchants', merchantsRouter);
 app.use('/api/feed', feedRouter);
 
 // Secure Password Update Endpoint (Bypasses Client Auth Quirks)

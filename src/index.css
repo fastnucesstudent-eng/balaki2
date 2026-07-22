@@ -17,25 +17,25 @@
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
-    --primary: 19 96% 50%;
-    /* Daraz Orange #f85606 */
-    --secondary: 210 40% 96.1%;
-    --accent: 19 96% 50%;
+    --background: 140 30% 98%;
+    --foreground: 150 40% 10%;
+    --primary: 142 76% 36%; /* Emerald Leaf Green #16a34a */
+    --secondary: 142 45% 94%; /* Soft Pale Mint */
+    --accent: 142 71% 45%; /* Vibrant Parrot Green #22c55e */
     --card: 0 0% 100%;
-    --border: 214.3 31.8% 91.4%;
-    --daraz-orange: 19 96% 50%;
+    --border: 142 30% 88%;
+    --organic-green: 142 76% 36%;
+    --parrot-green: 142 71% 45%;
   }
 
   .dark {
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
-    --primary: 19 96% 60%;
-    --secondary: 217.2 32.6% 17.5%;
-    --accent: 19 96% 60%;
-    --card: 222.2 84% 8%;
-    --border: 217.2 32.6% 17.5%;
+    --background: 150 40% 6%;
+    --foreground: 140 20% 96%;
+    --primary: 142 71% 45%; /* Parrot Green #22c55e */
+    --secondary: 150 30% 14%;
+    --accent: 142 69% 58%;
+    --card: 150 35% 9%;
+    --border: 150 25% 18%;
   }
 }
 

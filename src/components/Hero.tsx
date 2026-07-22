@@ -1,5 +1,4 @@
 import { motion, type Variants } from 'framer-motion';
-import { Zap } from 'lucide-react';
 
 export const Hero = () => {
 
@@ -40,44 +39,38 @@ export const Hero = () => {
                     className="flex flex-col items-center"
                 >
                     <h1 className="font-black mb-6 md:mb-12 tracking-tighter flex flex-col items-center uppercase leading-none overflow-visible">
-                        <div className="flex flex-wrap justify-center pb-4 md:pb-8 overflow-visible">
-                            {"TARZIFY".split("").map((char, index) => (
+                        <div className="flex flex-wrap justify-center pb-2 md:pb-4 overflow-visible">
+                            {"BALAKI".split("").map((char, index) => (
                                 <motion.span
                                     key={index}
                                     variants={charVariants}
-                                    className="inline-block text-[3rem] sm:text-[5rem] md:text-[7.5rem] bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent italic leading-none z-20 font-black px-1 md:px-2"
+                                    className="inline-block text-[2.8rem] sm:text-[4.8rem] md:text-[7rem] bg-gradient-to-r from-primary via-emerald-500 to-accent bg-clip-text text-transparent italic leading-none z-20 font-black px-1 md:px-2"
                                 >
                                     {char}
                                 </motion.span>
                             ))}
                         </div>
 
-                        <div className="relative group px-4 -mt-4 md:-mt-8 z-10 overflow-visible text-center flex flex-wrap justify-center">
-                            {"Premium".split("").map((char, index) => (
+                        <div className="relative group px-4 -mt-2 md:-mt-6 z-10 overflow-visible text-center flex flex-wrap justify-center">
+                            {"ORGANIC".split("").map((char, index) => (
                                 <motion.span
                                     key={index}
                                     variants={charVariants}
-                                    className="text-[1.5rem] sm:text-[3rem] md:text-[4.5rem] text-foreground inline-block leading-none font-bold px-1"
+                                    className="text-[1.8rem] sm:text-[3.2rem] md:text-[4.8rem] text-primary inline-block leading-none font-black tracking-tight px-1"
                                 >
                                     {char}
                                 </motion.span>
                             ))}
                         </div>
 
-                        <div className="relative group px-4 mt-1 z-0 overflow-visible text-center flex flex-wrap justify-center translate-y-[-5px] md:translate-y-0">
-                            {"Lifestyle Store".split("").map((char, index) => (
-                                <motion.span
-                                    key={index}
-                                    variants={charVariants}
-                                    className={`text-[0.8rem] sm:text-[1.5rem] md:text-[2.2rem] bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent italic leading-none inline-block font-bold px-1 ${char === " " ? "mx-1.5 md:mx-2" : ""}`}
-                                >
-                                    {char}
-                                </motion.span>
-                            ))}
+                        <div className="relative group px-4 mt-2 z-0 overflow-visible text-center flex flex-wrap justify-center">
+                            <span className="text-xs sm:text-base md:text-lg bg-primary/10 text-primary border border-primary/20 rounded-full px-4 py-1.5 font-bold uppercase tracking-widest flex items-center gap-2">
+                                <span>🌿 100% Pure & Certified Organic Produce</span>
+                            </span>
                         </div>
                     </h1>
-                    <p className="text-sm sm:text-base md:text-lg text-foreground/60 max-w-2xl md:max-w-3xl mx-auto mb-5 md:mb-8 leading-relaxed font-medium px-4">
-                        Discover a complete shopping ecosystem where premium quality meets unparalleled convenience. Delivered with trust and speed across Pakistan.
+                    <p className="text-sm sm:text-base md:text-lg text-foreground/70 max-w-2xl md:max-w-3xl mx-auto mb-5 md:mb-8 leading-relaxed font-medium px-4">
+                        Handpicked raw honey, cold-pressed oils, pure spices, herbal teas, and natural superfoods — 100% chemical-free and farm-fresh directly to your home across Pakistan.
                     </p>
 
                     <div className="flex flex-col sm:flex-row items-center justify-center gap-4 w-full px-6 md:px-0">
@@ -108,10 +101,10 @@ export const Hero = () => {
                                     window.location.hash = '#sale';
                                 }
                             }}
-                            className="sm:hidden w-full flex items-center justify-center gap-2 px-8 py-3.5 bg-primary text-white rounded-full font-black text-sm hover:scale-105 transition-transform shadow-[0_10px_30px_rgba(255,0,0,0.2)] animate-pulse"
+                            className="sm:hidden w-full flex items-center justify-center gap-2 px-8 py-3.5 bg-primary text-white rounded-full font-black text-sm hover:scale-105 transition-transform shadow-lg shadow-primary/30"
                         >
-                            <Zap className="w-4 h-4" />
-                            {window.location.hash === '#sale' ? 'Show All Products' : 'Flash Sale Live'}
+                            <span>🌿</span>
+                            {window.location.hash === '#sale' ? 'Show All Products' : 'Organic Offers'}
                         </button>
                     </div>
                 </motion.div>

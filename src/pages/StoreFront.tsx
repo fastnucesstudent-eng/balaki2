@@ -2,7 +2,6 @@ import React, { useMemo } from 'react';
 import { Hero } from '../components/Hero';
 import { HeroBanner } from '../components/HeroBanner';
 import { CategorySection } from '../components/CategorySection';
-import { MerchantSection } from '../components/MerchantSection';
 import { ProductCard } from '../components/ProductCard';
 import { ProductSkeleton } from '../components/Skeleton';
 import { ChevronRight, ChevronLeft, Search, Tag } from 'lucide-react';
@@ -106,7 +105,6 @@ export const StoreFront: React.FC<StoreFrontProps> = ({
         <main className="bg-gray-50/50 dark:bg-zinc-950 min-h-screen pb-20">
             <Hero />
             <HeroBanner />
-            <MerchantSection />
             <CategorySection activeCategory={activeCategory} onCategoryChange={setActiveCategory} />
 
             {/* Mobile-Only Search Bar - Positioned below categories */}

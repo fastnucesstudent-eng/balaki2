@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Mail, Lock, User, ArrowRight, Loader2, X } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useToastStore } from '../stores/useToastStore';
+import { useAuthStore } from '../stores/useAuthStore';
 
 export const AuthPage = ({ type = 'login', onClose }: { type?: 'login' | 'signup', onClose?: () => void }) => {
     const [mode, setMode] = useState<'login' | 'signup' | 'forgot'>(type);
@@ -32,7 +33,6 @@ export const AuthPage = ({ type = 'login', onClose }: { type?: 'login' | 'signup
                     console.error('❌ Signup error:', error);
                     throw error;
                 }
-                // Supabase returns a user with empty identities if the email already exists
                 if (data.user && data.user.identities && data.user.identities.length === 0) {
                     setError('An account with this email already exists. Please sign in instead.');
                     setMode('login');
@@ -48,6 +48,10 @@ export const AuthPage = ({ type = 'login', onClose }: { type?: 'login' | 'signup
                 }
                 console.log('✅ Login successful:', data.user?.email);
                 useToastStore.getState().show('Welcome back!', 'success');
+                onClose?.();
+                if (window.location.hash === '#admin') {
+                    await useAuthStore.getState().refreshProfile();
+                }
             }
         } catch (err: any) {
             console.error('❌ Auth attempt failed:', err.message);
@@ -95,7 +99,7 @@ export const AuthPage = ({ type = 'login', onClose }: { type?: 'login' | 'signup
                     </button>
                 )}
                 <div className="flex flex-col items-center mb-8">
-                    <img src="/logo.png" alt="TARZIFY Logo" className="w-16 h-16 rounded-full object-cover border-2 border-primary/30 shadow-2xl" />
+                    <img src="/logo.svg" alt="Balaki Organic Logo" className="w-16 h-16 rounded-full object-cover border-2 border-primary/30 shadow-2xl" />
                 </div>
 
                 <div className="text-center mb-10">
@@ -103,7 +107,7 @@ export const AuthPage = ({ type = 'login', onClose }: { type?: 'login' | 'signup
                         {mode === 'login' ? 'Welcome Back' : mode === 'signup' ? 'Create Account' : 'Reset Password'}
                     </h2>
                     <p className="text-base font-medium text-white/70">
-                        {mode === 'login' ? 'The premium shopping experience awaits.' : mode === 'signup' ? 'Join the All-in-One Store today.' : 'Enter your email to receive a reset link.'}
+                        {mode === 'login' ? 'The pure organic shopping experience awaits.' : mode === 'signup' ? 'Join Balaki Organic today.' : 'Enter your email to receive a reset link.'}
                     </p>
                 </div>
 
@@ -259,20 +263,6 @@ export const AuthPage = ({ type = 'login', onClose }: { type?: 'login' | 'signup
                         </button>
                     </form>
                 )}
-
-                {/* Merchant CTA */}
-                <div className="mt-8 pt-6 border-t border-white/10 text-center">
-                    <p className="text-xs text-white/40 font-medium">
-                        Want to sell on Tarzify?{' '}
-                        <button
-                            type="button"
-                            onClick={() => { onClose?.(); window.location.hash = '#merchant-register'; }}
-                            className="text-primary font-black hover:underline"
-                        >
-                            Apply as a Merchant →
-                        </button>
-                    </p>
-                </div>
             </motion.div>
         </div>
     );

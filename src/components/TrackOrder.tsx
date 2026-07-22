@@ -17,23 +17,108 @@ export const TrackOrder = ({ onClose, initialOrderId }: { onClose: () => void, i
 
     const handleTrack = async (e?: React.FormEvent) => {
         if (e) e.preventDefault();
-        if (!orderId.trim()) return;
+        const cleanId = orderId.trim();
+        if (!cleanId) return;
 
         setLoading(true);
         setError('');
         setStatus(null);
 
-        try {
-            const id = orderId.trim().toUpperCase();
-            
-            // Use secure RPC for guest tracking
-            const { data, error } = await supabase.rpc('get_order_status', { 
-                p_order_number: id 
-            });
+        let data: any = null;
 
-            if (error) throw error;
+        try {
+            const upperId = cleanId.toUpperCase();
+            const isNumeric = /^\d+$/.test(cleanId);
+
+            // Step 1: Exact order_number match (case-insensitive)
             if (!data) {
-                setError('Order not found. Please check your ID.');
+                const { data: d } = await supabase
+                    .from('orders')
+                    .select('*, order_items(*, products(*))')
+                    .ilike('order_number', upperId)
+                    .maybeSingle();
+                data = d;
+            }
+
+            // Step 2: tracking_number match
+            if (!data) {
+                const { data: d } = await supabase
+                    .from('orders')
+                    .select('*, order_items(*, products(*))')
+                    .ilike('tracking_number', upperId)
+                    .maybeSingle();
+                data = d;
+            }
+
+            // Step 3: customer_email match
+            if (!data) {
+                const { data: d } = await supabase
+                    .from('orders')
+                    .select('*, order_items(*, products(*))')
+                    .ilike('customer_email', cleanId)
+                    .maybeSingle();
+                data = d;
+            }
+
+            // Step 4: Fuzzy order_number contains cleanId
+            if (!data) {
+                const { data: d } = await supabase
+                    .from('orders')
+                    .select('*, order_items(*, products(*))')
+                    .ilike('order_number', `%${cleanId}%`)
+                    .maybeSingle();
+                data = d;
+            }
+
+            // Step 5: Numeric ID fallback (only for pure numbers)
+            if (!data && isNumeric) {
+                const { data: d } = await supabase
+                    .from('orders')
+                    .select('*, order_items(*, products(*))')
+                    .eq('id', Number(cleanId))
+                    .maybeSingle();
+                data = d;
+            }
+
+            // Step 6: Phone number match (only for pure numbers)
+            if (!data && isNumeric) {
+                const { data: d } = await supabase
+                    .from('orders')
+                    .select('*, order_items(*, products(*))')
+                    .eq('phone', cleanId)
+                    .maybeSingle();
+                data = d;
+            }
+
+            // Step 7: Multi-endpoint API Fallback (Bypasses RLS using Service Role backend)
+            if (!data) {
+                const apiCandidates = Array.from(new Set([
+                    import.meta.env.VITE_API_URL,
+                    `${window.location.origin}/api`,
+                    'http://localhost:5000/api'
+                ].filter(Boolean)));
+
+                for (const baseUrl of apiCandidates) {
+                    try {
+                        const cleanBase = (baseUrl as string).replace(/\/+$/, '');
+                        const res = await fetch(`${cleanBase}/orders/track?orderId=${encodeURIComponent(cleanId)}`, {
+                            signal: AbortSignal.timeout(5000)
+                        });
+                        if (res.ok) {
+                            const apiRes = await res.json();
+                            if (apiRes.success && apiRes.order) {
+                                data = apiRes.order;
+                                break;
+                            }
+                        }
+                    } catch (_apiErr) {
+                        // try next candidate
+                    }
+                }
+            }
+
+            if (!data) {
+                setError('Order not found. Please check your Order ID or Phone number.');
             } else {
                 setStatus(data);
             }
@@ -89,7 +174,7 @@ export const TrackOrder = ({ onClose, initialOrderId }: { onClose: () => void, i
                     <div className="text-center mb-10 sm:mb-12 flex flex-col items-center">
                         <div className="relative group mb-6">
                             <div className="absolute -inset-4 bg-primary/20 rounded-full blur-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-700" />
-                            <img src="/logo.png" alt="TARZIFY Logo" className="w-16 h-16 sm:w-20 sm:h-20 rounded-full object-cover border-2 border-primary/30 shadow-2xl relative z-10" />
+                            <img src="/logo.svg" alt="Balaki Organic Logo" className="w-16 h-16 sm:w-20 sm:h-20 rounded-full object-cover border-2 border-primary/30 shadow-2xl relative z-10" />
                         </div>
                         <h2 className="text-4xl sm:text-5xl font-black italic tracking-tighter mb-4 uppercase text-foreground leading-none">
                             TRACK <span className="text-primary">ORDER</span>

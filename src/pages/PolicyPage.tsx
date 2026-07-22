@@ -63,7 +63,7 @@ const POLICIES = {
                 <div>
                     <h3 className="font-black text-xl mb-2">4. Shipping Costs</h3>
                     <p>Customers are responsible for return shipping costs. Original shipping costs are non-refundable.</p>
-                    <p className="mt-4 font-bold text-primary">Contact Support: support@tarzify.com</p>
+                    <p className="mt-4 font-bold text-primary">Contact Support: support@balakiorganic.com</p>
                 </div>
             </div>
         )
@@ -102,7 +102,7 @@ const POLICIES = {
             <div className="space-y-6">
                 <div>
                     <h3 className="font-black text-xl mb-2">1. Acceptance</h3>
-                    <p>By using TARZIFY, you agree to these terms.</p>
+                    <p>By using Balaki Organic, you agree to these terms.</p>
                 </div>
                 <div>
                     <h3 className="font-black text-xl mb-2">2. Pricing</h3>
@@ -110,7 +110,7 @@ const POLICIES = {
                 </div>
                 <div>
                     <h3 className="font-black text-xl mb-2">3. Intellectual Property</h3>
-                    <p>All content (images, text, logos) is property of TARZIFY.</p>
+                    <p>All content (images, text, logos) is property of Balaki Organic.</p>
                 </div>
                 <div>
                     <h3 className="font-black text-xl mb-2">4. Limitation of Liability</h3>
@@ -151,7 +151,7 @@ export const PolicyPage = ({ type }: { type: keyof typeof POLICIES }) => {
                         Return to Store
                     </button>
                     <button
-                        onClick={() => window.open('tel:+923094561786')}
+                        onClick={() => window.open('tel:+923014444980')}
                         className="px-8 py-4 glass rounded-2xl font-black text-sm hover:bg-white/10 transition-colors"
                     >
                         Contact Support

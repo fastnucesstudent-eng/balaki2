@@ -1,4 +1,0 @@
-# Deployment Trigger
-
-This file exists solely to trigger GitHub Actions deployments.
-Last deployment: 2026-02-11 04:52 UTC

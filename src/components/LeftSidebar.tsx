@@ -1,7 +1,7 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { 
-    Tag, Package, LayoutDashboard, Shield, 
+    Tag, Package, Shield, 
     ShoppingBag, Ticket, Store,
     Share2
 } from 'lucide-react';
@@ -22,9 +22,6 @@ export const LeftSidebar: React.FC<SidebarProps> = ({ onNavigate, activeHash }) 
     ];
 
     const professionalItems = [];
-    if (role === 'merchant' || role === 'admin') {
-        professionalItems.push({ id: 'merchant', label: 'Merchant Panel', icon: LayoutDashboard, color: 'text-purple-500', bg: 'bg-purple-500/10' });
-    }
     if (role === 'admin') {
         professionalItems.push({ id: 'admin', label: 'Admin Panel', icon: Shield, color: 'text-red-500', bg: 'bg-red-500/10' });
     }

@@ -106,7 +106,7 @@ export const RateProduct = ({ params, onComplete }: RateProductProps) => {
         setSubmitting(true);
 
         try {
-            const apiUrl = import.meta.env.VITE_API_URL || (import.meta.env.DEV ? 'http://localhost:5000/api' : 'https://backend.tarzify.com/api');
+            const apiUrl = import.meta.env.VITE_API_URL || (import.meta.env.DEV ? 'http://localhost:5000/api' : 'https://backend.balakiorganic.com/api');
             
             // We use our new backend API to handle signature verification and order ownership
             const res = await fetch(`${apiUrl}/orders/submit-review`, {

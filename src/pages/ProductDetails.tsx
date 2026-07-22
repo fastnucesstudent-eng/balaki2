@@ -178,10 +178,10 @@ export const ProductDetails = ({ productId, storeSlug, onBack, onFly }: { produc
             '@context': 'https://schema.org',
             '@type': 'Product',
             name: product.name,
-            description: product.description || `Shop ${product.name} at Tarzify.`,
+            description: product.description || `Shop 100% pure ${product.name} at Balaki Organic.`,
             image: product.image_urls?.length ? product.image_urls : [product.image_url],
             sku: product.sku,
-            brand: { '@type': 'Brand', name: 'Tarzify' },
+            brand: { '@type': 'Brand', name: 'Balaki Organic' },
             ...(avgRatingNum !== null && {
                 aggregateRating: {
                     '@type': 'AggregateRating',
@@ -210,13 +210,13 @@ export const ProductDetails = ({ productId, storeSlug, onBack, onFly }: { produc
             }),
             offers: {
                 '@type': 'Offer',
-                url: `${import.meta.env.VITE_SITE_URL || 'https://tarzify.com'}/#${generateProductURL(product.name, product.sku)}`,
+                url: `${import.meta.env.VITE_SITE_URL || 'https://balakiorganic.com'}/#${generateProductURL(product.name, product.sku)}`,
                 priceCurrency: 'PKR',
                 price: product.price,
                 availability: product.stock > 0
                     ? 'https://schema.org/InStock'
                     : 'https://schema.org/OutOfStock',
-                seller: { '@type': 'Organization', name: 'Tarzify' },
+                seller: { '@type': 'Organization', name: 'Balaki Organic' },
                 shippingDetails: {
                     '@type': 'OfferShippingDetails',
                     shippingRate: {
@@ -367,7 +367,7 @@ export const ProductDetails = ({ productId, storeSlug, onBack, onFly }: { produc
         const shareUrl = `${siteUrl}/#${generateProductURL(product.name, product.sku)}`;
         const shareData = {
             title: product?.name,
-            text: `Check out ${product?.name} on Tarzify!`,
+            text: `Check out 100% pure ${product?.name} on Balaki Organic!`,
             url: shareUrl
         };
 
@@ -387,9 +387,9 @@ export const ProductDetails = ({ productId, storeSlug, onBack, onFly }: { produc
         <div className="min-h-screen bg-background pt-4 pb-24 px-4 sm:px-6">
             <SEO
                 title={product.name}
-                description={product.description?.substring(0, 160) || `Buy ${product.name} at Tarzify.`}
+                description={product.description?.substring(0, 160) || `Buy 100% pure ${product.name} at Balaki Organic.`}
                 image={product.image_url}
-                url={`${import.meta.env.VITE_SITE_URL || 'https://tarzify.com'}/#${generateProductURL(product.name, product.sku)}`}
+                url={`${import.meta.env.VITE_SITE_URL || 'https://balakiorganic.com'}/#${generateProductURL(product.name, product.sku)}`}
                 type="product"
             />
             <div className="max-w-7xl mx-auto">

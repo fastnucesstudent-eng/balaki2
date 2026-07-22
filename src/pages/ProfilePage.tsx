@@ -22,9 +22,17 @@ export const ProfilePage = () => {
     const [confirmingCancelId, setConfirmingCancelId] = useState<string | null>(null);
     const [highlightProductId, setHighlightProductId] = useState<string | null>(null);
     const [urlParams, setUrlParams] = useState<{ order_id: string | null, sig: string | null }>({ order_id: null, sig: null });
+    const [currentHash, setCurrentHash] = useState(window.location.hash);
+
+    // Keep a reactive hash state so effects re-run on navigation
+    useEffect(() => {
+        const onHash = () => setCurrentHash(window.location.hash);
+        window.addEventListener('hashchange', onHash);
+        return () => window.removeEventListener('hashchange', onHash);
+    }, []);
 
     useEffect(() => {
-        const hash = window.location.hash;
+        const hash = currentHash;
         if (hash.includes('?')) {
             const params = new URLSearchParams(hash.split('?')[1]);
             const tabParam = params.get('tab');
@@ -44,31 +52,66 @@ export const ProfilePage = () => {
                 setUrlParams({ order_id: orderParam, sig: sigParam });
             }
         }
-    }, [window.location.hash]);
+    }, [currentHash]);
 
     useEffect(() => {
-        if (user) {
-            const fetchData = async () => {
-                setLoading(true);
-                // Fetch Orders
+        let isMounted = true;
+
+        const fetchData = async () => {
+            setLoading(true);
+            try {
+                let currentUser = user;
+                if (!currentUser) {
+                    const { data: { session } } = await supabase.auth.getSession();
+                    currentUser = session?.user || null;
+                }
+
+                if (!currentUser) {
+                    if (isMounted) setLoading(false);
+                    return;
+                }
+
+                // Auto-link any guest orders matching current user email
+                if (currentUser.email) {
+                    try {
+                        await supabase
+                            .from('orders')
+                            .update({ user_id: currentUser.id })
+                            .is('user_id', null)
+                            .ilike('customer_email', currentUser.email);
+                    } catch (e) {
+                        console.error('Error auto-linking guest orders:', e);
+                    }
+                }
+
+                // Fetch Orders (Matches user_id, customer_email, or email)
+                const userEmail = currentUser.email ? currentUser.email.toLowerCase() : '';
+                const filterQuery = userEmail 
+                    ? `user_id.eq.${currentUser.id},customer_email.ilike.${userEmail},email.ilike.${userEmail}`
+                    : `user_id.eq.${currentUser.id}`;
+
                 const { data: ordersData } = await supabase
                     .from('orders')
-                    .select('*, profiles:profiles!user_id(*), order_items(*, products(*))')
-                    .eq('user_id', user.id)
+                    .select('*, order_items(*, products(*))')
+                    .or(filterQuery)
                     .order('created_at', { ascending: false });
+
+                if (isMounted && ordersData) setOrders(ordersData);
 
                 // Fetch Reviews
                 const { data: reviewsData } = await supabase
                     .from('reviews')
                     .select('*, products(name, image_url)')
-                    .eq('user_id', user.id)
+                    .eq('user_id', currentUser.id)
                     .order('created_at', { ascending: false });
 
-                // Fetch Following (Two-step fetch to avoid schema join issues)
+                if (isMounted && reviewsData) setReviews(reviewsData);
+
+                // Fetch Following
                 const { data: follows, error: followsError } = await supabase
                     .from('store_follows')
                     .select('merchant_id')
-                    .eq('user_id', user.id);
+                    .eq('user_id', currentUser.id);
 
                 if (followsError) {
                     console.error('Error fetching follows:', followsError);
@@ -79,19 +122,21 @@ export const ProfilePage = () => {
                         .select('*')
                         .in('id', merchantIds);
                     
-                    if (merchants) setFollowing(merchants);
+                    if (isMounted && merchants) setFollowing(merchants);
+                } else if (isMounted) {
+                    setFollowing([]);
                 }
+            } catch (err) {
+                console.error('Error fetching profile data:', err);
+            } finally {
+                if (isMounted) setLoading(false);
+            }
+        };
 
-                if (ordersData) setOrders(ordersData);
-                if (reviewsData) setReviews(reviewsData);
+        fetchData();
 
-                if (ordersData) setOrders(ordersData);
-                if (reviewsData) setReviews(reviewsData);
-                setLoading(false);
-            };
-            fetchData();
-        }
-    }, [user]);
+        return () => { isMounted = false; };
+    }, [user?.id, currentHash]);
 
     const handleCancelOrder = async (orderId: string) => {
         setCancellingOrderId(orderId);
@@ -124,6 +169,16 @@ export const ProfilePage = () => {
         .filter(o => o.status === 'delivered')
         .flatMap(o => o.order_items.map((item: any) => ({ ...item, order_id: o.id, order_number: o.order_number })))
         .filter(item => !reviews.some(r => r.order_id === item.order_id && r.product_id === item.product_id));
+
+    // Show loading while auth session is being resolved
+    if (!user && loading) return (
+        <div className="min-h-screen bg-background flex items-center justify-center">
+            <div className="flex flex-col items-center gap-4">
+                <div className="w-12 h-12 border-4 border-primary/20 border-t-primary rounded-full animate-spin" />
+                <p className="font-black uppercase tracking-widest opacity-30 text-sm italic">Loading Profile...</p>
+            </div>
+        </div>
+    );
 
     if (!user) return null;
 

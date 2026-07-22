@@ -18,14 +18,11 @@ export const HeroBanner = () => {
     useEffect(() => {
         const fetchBanners = async () => {
             try {
-                const now = new Date().toISOString();
                 const { data, error } = await supabase
                     .from('banners')
                     .select('*')
-                    .eq('status', 'approved')
-                    .lte('start_at', now)
-                    .or(`end_at.gte.${now},end_at.is.null`)
-                    .order('display_order', { ascending: true });
+                    .eq('is_active', true)
+                    .order('id', { ascending: true });
 
                 if (error) {
                     // Silence AbortErrors
@@ -84,16 +81,15 @@ export const HeroBanner = () => {
     };
 
     if (loading) return (
-        <div className="w-full aspect-[21/7] md:aspect-[25/7.2] bg-foreground/5 rounded-[2rem] animate-pulse flex items-center justify-center">
+        <div className="w-full aspect-[16/7] md:aspect-[4/1] bg-foreground/5 rounded-[2rem] animate-pulse flex items-center justify-center">
             <p className="text-[10px] font-black uppercase opacity-20 italic tracking-widest">Loading Highlights...</p>
         </div>
     );
 
     if (banners.length === 0) return null;
-
     return (
         <section className="relative w-full max-w-[1400px] mx-auto px-4 md:px-6 mb-6 md:mb-12">
-            <div className="relative aspect-[18/7] md:aspect-[25/7.2] rounded-[2rem] md:rounded-[3rem] overflow-hidden group shadow-2xl">
+            <div className="relative aspect-[16/7] md:aspect-[4/1] rounded-[2rem] md:rounded-[3rem] overflow-hidden group shadow-2xl">
                 <AnimatePresence mode="wait">
                     <motion.div
                         key={banners[currentIndex].id}

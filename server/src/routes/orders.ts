@@ -29,7 +29,7 @@ const generateReviewSignature = (orderId: string, productId: string, userId: str
 const sendOrderEmail = async (email: string, order: any, items: any, subtotal: number, shippingCost: number, discountAmount: number, total: number, shippingAddress: string) => {
     if (!process.env.SMTP_USER || !process.env.SMTP_PASS) return;
     const transporter = getTransporter();
-    const frontendUrl = process.env.FRONTEND_URL || 'https://tarzify.com';
+    const frontendUrl = process.env.FRONTEND_URL || 'https://balakiorganic.com';
     const trackUrl = `${frontendUrl}/#track-order?id=${order.order_number}`;
 
     const itemsRows = items.map((item: any) => {
@@ -43,7 +43,7 @@ const sendOrderEmail = async (email: string, order: any, items: any, subtotal: n
                 </td>
                 <td style="padding: 15px 15px; border-bottom: 1px solid #eeeeee;">
                     <div style="font-family: Arial, sans-serif; font-weight: 700; color: #212121; font-size: 14px; margin-bottom: 4px;">${item.name}</div>
-                    ${variants ? `<div style="font-family: Arial, sans-serif; color: #f85606; font-size: 11px; font-weight: 700; text-transform: uppercase;">${variants}</div>` : ''}
+                    ${variants ? `<div style="font-family: Arial, sans-serif; color: #22c55e; font-size: 11px; font-weight: 700; text-transform: uppercase;">${variants}</div>` : ''}
                     <div style="font-family: Arial, sans-serif; color: #757575; font-size: 12px;">Qty: ${item.quantity} | Rs. ${item.price.toLocaleString()} each</div>
                 </td>
                 <td style="padding: 15px 0; border-bottom: 1px solid #eeeeee; text-align: right; font-family: Arial, sans-serif; font-weight: 700; color: #212121;" valign="top">
@@ -68,8 +68,8 @@ const sendOrderEmail = async (email: string, order: any, items: any, subtotal: n
                             <!-- Header Logo -->
                             <tr>
                                 <td align="center" style="padding: 40px 0 20px 0;">
-                                    <img src="${frontendUrl}/logo.png" alt="TARZIFY" width="140" style="display: block; margin-bottom: 10px;">
-                                    <div style="font-family: Arial, sans-serif; font-size: 10px; font-weight: 800; color: #333; text-transform: uppercase; letter-spacing: 2px;">ELEVATING YOUR LIFESTYLE</div>
+                                    <img src="${frontendUrl}/logo.png" alt="BALAKI ORGANIC" width="140" style="display: block; margin-bottom: 10px;">
+                                    <div style="font-family: Arial, sans-serif; font-size: 10px; font-weight: 800; color: #16a34a; text-transform: uppercase; letter-spacing: 2px;">100% PURE & CERTIFIED ORGANIC</div>
                                 </td>
                             </tr>
                             
@@ -168,9 +168,9 @@ const sendOrderEmail = async (email: string, order: any, items: any, subtotal: n
                             <tr>
                                 <td align="center" style="background-color: #111111; padding: 40px 20px; color: #ffffff;">
                                     <div style="font-family: Arial, sans-serif; font-size: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 15px;">QUESTIONS?</div>
-                                    <p style="font-family: Arial, sans-serif; font-size: 14px; margin-bottom: 30px; opacity: 0.8;">Email us anytime at <a href="mailto:support@tarzify.com" style="color: #f85606; text-decoration: none; font-weight: 700;">support@tarzify.com</a></p>
+                                    <p style="font-family: Arial, sans-serif; font-size: 14px; margin-bottom: 30px; opacity: 0.8;">Email us anytime at <a href="mailto:support@balakiorganic.com" style="color: #22c55e; text-decoration: none; font-weight: 700;">support@balakiorganic.com</a></p>
                                     <div style="border-top: 1px solid rgba(255,255,255,0.1); padding-top: 30px; width: 100%;">
-                                        <div style="font-family: Arial, sans-serif; font-size: 11px; font-weight: 700; opacity: 0.5;">© 2026 TARZIFY. HIGH QUALITY LIFESTYLE STORE.</div>
+                                        <div style="font-family: Arial, sans-serif; font-size: 11px; font-weight: 700; opacity: 0.5;">© 2026 BALAKI ORGANIC. 100% PURE & CERTIFIED ORGANIC STORE.</div>
                                         <div style="font-family: Arial, sans-serif; font-size: 10px; margin-top: 10px; opacity: 0.3;">This is an automated confirmation email. Please do not reply.</div>
                                     </div>
                                 </td>
@@ -496,6 +496,38 @@ const sendMerchantCancellationNotification = async (email: string, storeName: st
     } catch (error) { console.error('Merchant cancellation error:', error); }
 };
 
+// GET /orders/track - Public tracking endpoint (Bypasses RLS)
+router.get('/track', async (req, res) => {
+    const { orderId } = req.query;
+    if (!orderId) return res.status(400).json({ success: false, error: 'Order ID required' });
+    try {
+        const cleanId = String(orderId).trim();
+        const upperId = cleanId.toUpperCase();
+
+        let { data: order, error } = await supabase
+            .from('orders')
+            .select('*, order_items(*, products(*))')
+            .or(`order_number.ilike.${upperId},tracking_number.ilike.${upperId},phone.eq.${cleanId},customer_email.ilike.${cleanId},email.ilike.${cleanId}`)
+            .maybeSingle();
+
+        if (!order && !isNaN(Number(cleanId))) {
+            const { data: numOrder } = await supabase
+                .from('orders')
+                .select('*, order_items(*, products(*))')
+                .eq('id', Number(cleanId))
+                .maybeSingle();
+            order = numOrder;
+        }
+
+        if (error || !order) {
+            return res.status(404).json({ success: false, error: 'Order not found' });
+        }
+        return res.json({ success: true, order });
+    } catch (err: any) {
+        return res.status(500).json({ success: false, error: err.message });
+    }
+});
+
 router.post('/create', async (req, res) => {
     const { userId, items, total, shippingAddress, phone, paymentMethod, customerName, voucherId, discountAmount, shippingAmount } = req.body;
     if (!customerName || !shippingAddress || !phone || !items || items.length === 0) {
@@ -552,10 +584,16 @@ router.post('/create', async (req, res) => {
             item.image = product.image_url;
         }
 
+        let validUserId = null;
+        if (userId) {
+            const { data: profile } = await supabase.from('profiles').select('id').eq('id', userId).maybeSingle();
+            if (profile) validUserId = userId;
+        }
+
         const order_number = generateOrderId();
-        console.log(`[ORDER] Creating order ${order_number} (Build: 2026-03-23-V2)`);
+        console.log(`[ORDER] Creating order ${order_number} for user: ${validUserId || 'GUEST'}`);
         const { data: order, error: orderErr } = await supabase.from('orders').insert({
-            user_id: userId, total_amount: total, status: 'pending', shipping_address: shippingAddress, phone, payment_method: paymentMethod || 'cod', order_number, customer_name: customerName, email: req.body.email, voucher_id: voucherId, discount_amount: discountAmount || 0, shipping_amount: shippingAmount || 0
+            user_id: validUserId, total_amount: total, status: 'pending', shipping_address: shippingAddress, phone, payment_method: paymentMethod || 'cod', order_number, customer_name: customerName, email: req.body.email, voucher_id: voucherId, discount_amount: discountAmount || 0, shipping_amount: shippingAmount || 0
         }).select().single();
         if (orderErr) throw orderErr;
 
@@ -565,7 +603,7 @@ router.post('/create', async (req, res) => {
             quantity: item.quantity, 
             price: item.price, 
             variant_combo: item.variant_combo || {}, 
-            user_id: userId 
+            user_id: validUserId 
         }));
         await supabase.from('order_items').insert(orderItems);
 

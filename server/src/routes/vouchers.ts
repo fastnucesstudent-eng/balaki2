@@ -143,7 +143,7 @@ router.post('/create', async (req, res) => {
                             <p>Apply this code at checkout to save on your next order.</p>
                             ${min_spend ? `<p style="font-size: 12px; color: #94a3b8;">* Valid on orders over Rs. ${min_spend}</p>` : ''}
                             <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;" />
-                            <p style="font-size: 12px; color: #94a3b8; text-align: center;">Tarzify | Your Premium Lifestyle Store</p>
+                            <p style="font-size: 12px; color: #94a3b8; text-align: center;">Balaki Organic | 100% Pure & Certified Organic Store</p>
                         </div>
                     `
                 };

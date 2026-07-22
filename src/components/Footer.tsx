@@ -4,11 +4,10 @@ import { useProductStore } from '../stores/useProductStore';
 import { memo } from 'react';
 
 const POPULAR_SEARCHES = [
-    "buy online Pakistan", "tarzify online store", "online shopping Lahore", "online shopping Karachi",
-    "cash on delivery Pakistan", "fast delivery Pakistan", "best prices online", "branded products Pakistan",
-    "buy mobile phones online", "buy clothes online Pakistan", "buy shoes online", "buy electronics Pakistan",
-    "men's clothing online", "women's fashion Pakistan", "tarzify ecommerce store", "discount shopping Pakistan",
-    "buy watches online", "buy earbuds Pakistan", "buy laptops online Pakistan", "tarzify deals",
+    "buy organic honey Pakistan", "balaki organic store", "raw sidr honey Lahore", "pure cold pressed oil Pakistan",
+    "cash on delivery organic food", "fast organic delivery", "best pure honey price", "organic spices Pakistan",
+    "buy desi ghee online", "organic herbal tea Pakistan", "natural skincare Lahore", "organic dry fruits",
+    "chemical free food online", "balaki organic pakistan", "100% pure food store",
 ];
 
 export const Footer = memo(() => {
@@ -40,37 +39,30 @@ export const Footer = memo(() => {
             >
                 <div className="max-w-7xl mx-auto">
 
-                    {/* About Tarzify */}
+                    {/* About Balaki Organic */}
                     <div className="mb-10">
                         <h2 className="text-sm font-black uppercase tracking-widest text-gray-800 dark:text-gray-100 mb-4">
-                            How Tarzify Transformed Online Shopping in Pakistan
+                            Balaki Organic — Pure & Certified Organic Products in Pakistan
                         </h2>
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 text-xs text-gray-500 dark:text-gray-400 leading-relaxed font-medium">
                             <div>
-                                <h3 className="font-black text-gray-700 dark:text-gray-300 uppercase text-[11px] tracking-wide mb-2">Pakistan's Favourite Ecommerce Store</h3>
+                                <h3 className="font-black text-gray-700 dark:text-gray-300 uppercase text-[11px] tracking-wide mb-2">100% Pure & Farm Direct</h3>
                                 <p>
-                                    Tarzify is Pakistan's fastest-growing online ecommerce store, delivering premium products to customers
-                                    across Lahore, Karachi, Islamabad, and every city in Pakistan. Whether you are looking for men's fashion,
-                                    women's clothing, electronics, home decor, or beauty products — Tarzify has it all. Shop with confidence
-                                    with our cash on delivery option, secure checkout, and fast nationwide shipping.
+                                    Balaki Organic is Pakistan's premier online store for 100% pure organic food, raw honey, cold-pressed oils,
+                                    natural spices, herbal teas, and chemical-free superfoods. Delivered fresh from organic farms directly to your doorstep.
                                 </p>
                             </div>
                             <div>
-                                <h3 className="font-black text-gray-700 dark:text-gray-300 uppercase text-[11px] tracking-wide mb-2">Shop from Verified Merchants</h3>
+                                <h3 className="font-black text-gray-700 dark:text-gray-300 uppercase text-[11px] tracking-wide mb-2">Chemical & Additive Free</h3>
                                 <p>
-                                    Every product listed on Tarzify comes from verified merchants and trusted sellers across Pakistan.
-                                    We believe in quality-first online shopping, which is why every order is carefully reviewed before
-                                    dispatch. Tarzify sellers offer the best prices on branded and unbranded products, making us your
-                                    number one destination for online shopping in Pakistan with guaranteed authenticity.
+                                    Every item at Balaki Organic is strictly tested to be 100% free from artificial chemicals, preservatives, and GMOs.
+                                    We prioritize your family's health and wellness above all.
                                 </p>
                             </div>
                             <div>
-                                <h3 className="font-black text-gray-700 dark:text-gray-300 uppercase text-[11px] tracking-wide mb-2">Exclusive Offers &amp; Fast Delivery</h3>
+                                <h3 className="font-black text-gray-700 dark:text-gray-300 uppercase text-[11px] tracking-wide mb-2">Nationwide Express Delivery</h3>
                                 <p>
-                                    Tarzify offers exclusive discounts, seasonal sales, and daily deals across all categories. Our
-                                    logistics network covers the entire country, ensuring your order arrives within 2–5 business days.
-                                    With multiple payment methods including cash on delivery, EasyPaisa, and JazzCash, buying online
-                                    at Tarzify has never been easier or more convenient for customers across all of Pakistan.
+                                    Enjoy fast nationwide delivery across Lahore, Karachi, Islamabad, and every city in Pakistan. Cash on Delivery (COD) available on all orders with 100% satisfaction guaranteed.
                                 </p>
                             </div>
                         </div>
@@ -112,9 +104,9 @@ export const Footer = memo(() => {
                         )}
                     </div>
 
-                    {/* Popular Searches (HIDDEN FROM UI, KEPT FOR SEO) */}
+                    {/* Popular Searches */}
                     <div className="sr-only border-t border-gray-100 dark:border-gray-800 pt-6">
-                        <h3 className="text-xs font-black uppercase tracking-widest text-gray-400 dark:text-gray-500 mb-3">Popular Searches on Tarzify</h3>
+                        <h3 className="text-xs font-black uppercase tracking-widest text-gray-400 dark:text-gray-500 mb-3">Popular Searches on Balaki Organic</h3>
                         <div className="flex flex-wrap gap-2">
                             {POPULAR_SEARCHES.map(term => (
                                 <span
@@ -142,16 +134,15 @@ export const Footer = memo(() => {
                         {/* Brand */}
                         <div className="space-y-5">
                             <img
-                                src="/logo.png"
-                                alt="Tarzify Logo — Online Shopping Pakistan"
+                                src="/logo.svg"
+                                alt="Balaki Organic Logo — 100% Pure Organic Store"
                                 onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
                                 className="w-14 h-14 rounded-full object-cover shadow-xl border-2 border-primary/20 p-1 cursor-pointer hover:scale-110 transition-transform"
                             />
                             <p className="text-xs text-gray-400 dark:text-gray-500 leading-relaxed font-medium">
-                                Pakistan's premium ecommerce store. Fast delivery, secure payments, and quality products — only at Tarzify.
+                                Pakistan's premier 100% pure & certified organic store. Fast delivery, secure payments, and uncompromised quality — only at Balaki Organic.
                             </p>
                             <div className="flex flex-wrap gap-4 pt-2 items-center">
-                                {/* Inline SVG for Visa Logo — Refined Proportions */}
                                 <span className="text-[14px] font-black italic text-[#1A1F71] tracking-tighter hover:scale-110 transition-all cursor-pointer">VISA</span>
                                 <img src="https://upload.wikimedia.org/wikipedia/commons/2/2a/Mastercard-logo.svg" alt="Mastercard" className="h-6 hover:scale-110 transition-all cursor-pointer" />
                                 <div className="flex items-center gap-1.5 cursor-pointer hover:scale-110 transition-all group/p" title="JazzCash Available">
@@ -203,34 +194,34 @@ export const Footer = memo(() => {
                                     <address className="not-italic text-xs font-bold uppercase tracking-wider cursor-pointer">Lahore, Pakistan</address>
                                 </a>
                                 <a
-                                    href="tel:+923094561786"
+                                    href="tel:+923014444980"
                                     className="flex items-center gap-3 text-gray-400 dark:text-gray-500 hover:text-primary transition-colors group"
                                 >
                                     <div className="w-8 h-8 bg-gray-50 dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-full flex items-center justify-center flex-shrink-0 group-hover:border-primary/30">
                                         <Phone className="w-3.5 h-3.5 text-primary" />
                                     </div>
-                                    <span className="text-xs font-bold uppercase tracking-wider cursor-pointer font-mono">+92 309 456 1786</span>
+                                    <span className="text-xs font-bold uppercase tracking-wider cursor-pointer font-mono">+92 301 4444980</span>
                                 </a>
                                 <a
-                                    href="mailto:support@tarzify.com"
+                                    href="mailto:support@balakiorganic.com"
                                     className="flex items-center gap-3 text-gray-400 dark:text-gray-500 hover:text-primary transition-colors group"
                                 >
                                     <div className="w-8 h-8 bg-gray-50 dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-full flex items-center justify-center flex-shrink-0 group-hover:border-primary/30">
                                         <Mail className="w-3.5 h-3.5 text-primary" />
                                     </div>
-                                    <span className="text-xs font-bold tracking-wider cursor-pointer">support@tarzify.com</span>
+                                    <span className="text-xs font-bold tracking-wider cursor-pointer">support@balakiorganic.com</span>
                                 </a>
                             </div>
                         </div>
 
                         {/* Socials */}
                         <div className="space-y-5">
-                            <h4 className="text-[10px] font-black uppercase tracking-[0.4em] text-gray-300 dark:text-gray-600">Follow Tarzify</h4>
+                            <h4 className="text-[10px] font-black uppercase tracking-[0.4em] text-gray-300 dark:text-gray-600">Follow Balaki Organic</h4>
                             <div className="flex gap-3">
                                 {[
-                                    { Icon: Instagram, label: 'Instagram', href: 'https://instagram.com/tarzifyofficial' },
-                                    { Icon: Twitter, label: 'Twitter', href: 'https://twitter.com/tarzify' },
-                                    { Icon: Facebook, label: 'Facebook', href: 'https://facebook.com/tarzify' },
+                                    { Icon: Instagram, label: 'Instagram', href: 'https://instagram.com/balaki_organic' },
+                                    { Icon: Twitter, label: 'Twitter', href: 'https://twitter.com/balakiorganic' },
+                                    { Icon: Facebook, label: 'Facebook', href: 'https://facebook.com/balakiorganic' },
                                 ].map(({ Icon, label, href }) => (
                                     <a
                                         key={label}
@@ -245,7 +236,7 @@ export const Footer = memo(() => {
                                 ))}
                             </div>
                             <p className="text-[10px] text-gray-400 dark:text-gray-500 font-medium leading-relaxed">
-                                Stay updated with the latest deals, new arrivals, and exclusive offers from Tarzify Pakistan.
+                                Stay updated with the latest fresh harvests, new arrivals, and exclusive offers from Balaki Organic Pakistan.
                             </p>
                         </div>
                     </div>
@@ -253,10 +244,10 @@ export const Footer = memo(() => {
                     {/* Copyright bar */}
                     <div className="pt-8 border-t border-gray-100 dark:border-gray-800 flex flex-col sm:flex-row items-center justify-between gap-4 text-center">
                         <p className="text-[10px] font-bold uppercase tracking-widest text-gray-300 dark:text-gray-600">
-                            © {new Date().getFullYear()} Tarzify Ecommerce Store Pakistan. All Rights Reserved.
+                            © {new Date().getFullYear()} Balaki Organic Store Pakistan. All Rights Reserved.
                         </p>
                         <p className="text-[10px] text-gray-300 dark:text-gray-600 font-medium">
-                            Online Shopping Pakistan | Fast Delivery | Cash on Delivery | Tarzify
+                            100% Pure Organic Store | Fast Nationwide Delivery | Cash on Delivery | Balaki Organic
                         </p>
                     </div>
                 </div>

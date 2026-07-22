@@ -9,37 +9,35 @@ interface SEOProps {
 }
 
 export const SEO = ({
-    title = 'Tarzify | Premium Lifestyle Store',
-    description = 'Discover a complete shopping ecosystem where premium quality meets unparalleled convenience. Enjoy rapid, tracked delivery across Pakistan.',
-    image = '/og-image-1200.png', // Fallback to optimized OG image
-    url = 'https://www.tarzify.com',
+    title = 'Balaki Organic | 100% Pure & Certified Organic Store',
+    description = 'Discover 100% pure raw honey, cold-pressed oils, organic spices, herbal teas, and natural superfoods delivered fresh across Pakistan.',
+    image = '/logo.svg',
+    url = 'https://balakiorganic.com',
     type = 'website'
 }: SEOProps) => {
-    const siteTitle = title === 'Tarzify | Premium Lifestyle Store' ? title : `${title} | Tarzify`;
-    const baseUrl = 'https://www.tarzify.com';
+    const siteTitle = title === 'Balaki Organic | 100% Pure & Certified Organic Store' ? title : `${title} | Balaki Organic`;
+    const baseUrl = 'https://balakiorganic.com';
 
-    // Ensure absolute image URL for social previews
     const absoluteImageUrl = image.startsWith('http') ? image : `${baseUrl}${image.startsWith('/') ? '' : '/'}${image}`;
     const absolutePageUrl = url.startsWith('http') ? url : `${baseUrl}${url.startsWith('/') ? '' : '/'}${url}`;
 
-    // Schema.org Organization Markup
+    // Schema.org Structured Data
     const organizationSchema = {
         "@context": "https://schema.org",
         "@type": "Organization",
-        "name": "Tarzify",
+        "name": "Balaki Organic",
         "url": baseUrl,
-        "logo": `${baseUrl}/logo.png`,
+        "logo": `${baseUrl}/logo.svg`,
         "contactPoint": {
             "@type": "ContactPoint",
-            "telephone": "+92-309-4561786",
+            "telephone": "+92-301-4444980",
             "contactType": "customer service",
             "areaServed": "PK",
             "availableLanguage": "English"
         },
         "sameAs": [
-            "https://www.facebook.com/tarzify",
-            "https://www.instagram.com/tarzify",
-            "https://twitter.com/tarzify"
+            "https://www.facebook.com/balakiorganic",
+            "https://www.instagram.com/balaki_organic"
         ]
     };
 
@@ -48,11 +46,11 @@ export const SEO = ({
             {/* Standard Metadata */}
             <title>{siteTitle}</title>
             <meta name="description" content={description} />
-            <meta name="keywords" content="ecommerce, online shopping Pakistan, luxury store, premium products, Tarzify, best online store, lifestyle products, electronics, fashion, home decor" />
+            <meta name="keywords" content="Balaki Organic, organic food Pakistan, pure honey, cold pressed oil, organic spices, herbal tea, natural superfoods, chemical free food" />
             <link rel="canonical" href={absolutePageUrl} />
             <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1" />
-            <meta name="author" content="Tarzify Pakistan" />
-            <meta name="publisher" content="Tarzify" />
+            <meta name="author" content="Balaki Organic Pakistan" />
+            <meta name="publisher" content="Balaki Organic" />
 
             {/* Geographic Metadata */}
             <meta name="geo.region" content="PK-PB" />
@@ -70,7 +68,7 @@ export const SEO = ({
             <meta property="og:image:width" content="1200" />
             <meta property="og:image:height" content="630" />
             <meta property="og:image:alt" content={siteTitle} />
-            <meta property="og:site_name" content="Tarzify" />
+            <meta property="og:site_name" content="Balaki Organic" />
             <meta property="og:locale" content="en_PK" />
 
             {/* Twitter */}
@@ -80,20 +78,18 @@ export const SEO = ({
             <meta property="twitter:description" content={description} />
             <meta property="twitter:image" content={absoluteImageUrl} />
             <meta property="twitter:image:alt" content={siteTitle} />
-            <meta name="twitter:site" content="@tarzify" />
-            <meta name="twitter:creator" content="@tarzify" />
+            <meta name="twitter:site" content="@balakiorganic" />
+            <meta name="twitter:creator" content="@balakiorganic" />
 
             {/* Advanced Technical Meta */}
-            <meta name="theme-color" content="#1e3a8a" />
+            <meta name="theme-color" content="#22c55e" />
             <meta name="mobile-web-app-capable" content="yes" />
             <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
             <meta name="format-detection" content="telephone=no" />
 
-            {/* Favicon - Technical Compliance for Google Search */}
-            <link rel="icon" type="image/png" sizes="48x48" href="/favicon-48x48.png" />
-            <link rel="apple-touch-icon" sizes="180x180" href="/apple-icon-180x180.png" />
-            <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
-            <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png" />
+            {/* Favicon */}
+            <link rel="icon" type="image/svg+xml" href="/logo.svg" />
+            <link rel="apple-touch-icon" href="/logo.svg" />
 
             {/* Structured Data */}
             <script type="application/ld+json">

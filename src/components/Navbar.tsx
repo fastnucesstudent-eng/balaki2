@@ -64,24 +64,21 @@ export const Navbar = memo(({
                         className="flex items-center gap-2 sm:gap-3 cursor-pointer group shrink-0"
                     >
                                 <img
-                                    src="/logo.png"
-                                    alt="TARZIFY Logo"
-                                    className="h-7 md:h-10 w-7 md:w-10 rounded-full object-cover border border-white/10 group-hover:scale-105 transition-transform shadow-lg"
+                                    src="/logo.svg"
+                                    alt="Balaki Organic Logo"
+                                    className="h-7 md:h-10 w-7 md:w-10 rounded-full object-cover border border-primary/20 group-hover:scale-105 transition-transform shadow-lg"
                                 />
-                                <span className="hidden sm:inline text-xl md:text-3xl font-black tracking-tighter bg-gradient-to-r from-primary via-accent to-primary bg-[length:200%_auto] animate-gradient bg-clip-text text-transparent group-hover:scale-105 transition-transform">
-                                    TARZIFY
+                                <span className="hidden sm:inline text-xl md:text-2xl font-black tracking-tighter bg-gradient-to-r from-primary via-accent to-emerald-600 bg-[length:200%_auto] animate-gradient bg-clip-text text-transparent group-hover:scale-105 transition-transform">
+                                    BALAKI ORGANIC
                                 </span>
                             </div>
                             <div className="hidden lg:flex items-center gap-1 xl:gap-2 mr-auto">
                                 {[
                                     { name: 'Home', href: '#', id: '' },
-                                    { name: 'Featured Stores', href: '#merchants', id: 'merchants' },
                                     { name: 'Categories', href: '#categories', id: 'categories' },
-                                    { name: 'Flash Sale', href: '#sale', id: 'sale', icon: 'zap' },
-                                    { name: 'Used Items', href: '#used', id: 'used' },
+                                    { name: 'Organic Offers', href: '#sale', id: 'sale', icon: 'zap' },
                                     { name: 'Track Order', href: '#track-order', id: 'track-order' },
                                     { name: 'Profile', href: '#profile', id: 'profile' },
-                                    ...(role === 'merchant' || role === 'admin' ? [{ name: 'Merchant', href: '#merchant', id: 'merchant' }] : []),
                                     ...(role === 'admin' ? [{ name: 'Admin', href: '#admin', id: 'admin' }] : [])
                                 ].map((item) => {
                                     const isActive = (item.name === 'Home' && window.location.hash === '') || 
@@ -123,7 +120,7 @@ export const Navbar = memo(({
                                                 isActive ? 'text-primary' : 'text-foreground hover:text-primary'
                                             }`}
                                         >
-                                            {item.icon === 'zap' && <span className="text-primary animate-pulse text-[12px]">⚡</span>}
+                                            {item.icon === 'zap' && <span className="text-primary text-[12px]">🌿</span>}
                                             {item.name}
                                             <span className={`absolute -bottom-1 left-2 right-2 h-0.5 bg-primary transition-all ${
                                                 isActive ? 'w-auto' : 'w-0 group-hover:w-auto'
@@ -198,20 +195,20 @@ export const Navbar = memo(({
                                                         <UserIcon className="w-4 h-4 opacity-50" />
                                                         Account Settings
                                                     </button>
-
-                                                    {(role === 'merchant' || role === 'admin') && (
-                                                        <button onClick={() => { setIsProfileOpen(false); window.location.hash = '#merchant'; }} className="flex items-center gap-3 w-full p-3 rounded-xl hover:bg-primary/10 hover:text-primary transition-all text-[10px] font-black uppercase tracking-widest text-left">
-                                                            <LayoutDashboard className="w-4 h-4 opacity-50" />
-                                                            Merchant Panel
-                                                        </button>
-                                                    )}
-
+                                                    
                                                     {role === 'admin' && (
-                                                        <button onClick={() => { setIsProfileOpen(false); window.location.hash = '#admin'; }} className="flex items-center gap-3 w-full p-3 rounded-xl hover:bg-primary/10 hover:text-primary transition-all text-[10px] font-black uppercase tracking-widest text-left">
-                                                            <Shield className="w-4 h-4 opacity-50" />
-                                                            Admin Panel
-                                                        </button>
-                                                    )}
+                                                        <button 
+                                                            onClick={async () => { 
+                                                                setIsProfileOpen(false); 
+                                                                await useAuthStore.getState().refreshProfile();
+                                                                window.location.hash = '#admin'; 
+                                                            }} 
+                                                            className="flex items-center gap-3 w-full p-3 rounded-xl hover:bg-primary/10 hover:text-primary transition-all text-[10px] font-black uppercase tracking-widest text-left"
+                                                         >
+                                                            <Shield className="w-4 h-4 text-primary" />
+                                                            Admin Dashboard
+                                                         </button>
+                                                     )}
 
                                                     <button onClick={handleSignOut} className="flex items-center gap-3 w-full p-3 rounded-xl hover:bg-red-500/10 text-red-500 transition-all text-[10px] font-black uppercase tracking-widest text-left">
                                                         <LogOut className="w-4 h-4 opacity-50" />
@@ -321,7 +318,7 @@ export const Navbar = memo(({
                             </div>
                             
                             <div className="pt-2 text-center opacity-10 pointer-events-none">
-                                <p className="text-xl font-black italic tracking-tighter uppercase">Tarzify</p>
+                                <p className="text-xl font-black italic tracking-tighter uppercase">Balaki Organic</p>
                             </div>
                         </div>
                     </motion.div>
@@ -385,27 +382,9 @@ export const Navbar = memo(({
                                             onClick={() => setIsMenuOpen(false)}
                                             className="h-11 px-5 bg-primary/10 border border-primary/20 rounded-xl flex items-center justify-between group hover:bg-primary/20 transition-all outline-none"
                                         >
-                                            <span className="text-base font-black uppercase tracking-tighter italic text-primary group-hover:scale-105 transition-transform">Flash Sale</span>
+                                            <span className="text-base font-black uppercase tracking-tighter italic text-primary group-hover:scale-105 transition-transform">Organic Deals</span>
                                             <Tag className="w-4 h-4 text-primary group-hover:rotate-12 transition-transform" />
                                         </a>
-                                        <a
-                                            href="#used"
-                                            onClick={() => setIsMenuOpen(false)}
-                                            className="h-11 px-5 bg-accent/10 border border-accent/20 rounded-xl flex items-center justify-between group hover:bg-accent/20 transition-all outline-none"
-                                        >
-                                            <span className="text-base font-black uppercase tracking-tighter italic text-accent group-hover:scale-105 transition-transform">Used Items</span>
-                                            <ChevronRight className="w-4 h-4 text-accent" />
-                                        </a>
-
-                                        {!user && (
-                                            <button
-                                                onClick={() => { setIsMenuOpen(false); window.location.hash = '#merchant-register'; }}
-                                                className="h-11 px-5 bg-accent/10 border border-accent/20 rounded-xl flex items-center justify-between group hover:bg-accent/20 transition-all outline-none w-full"
-                                            >
-                                                <span className="text-base font-black uppercase tracking-tighter italic text-accent group-hover:scale-105 transition-transform">Sell on Tarzify</span>
-                                                <ChevronRight className="w-4 h-4 text-accent" />
-                                            </button>
-                                        )}
 
                                         {/* Categories Collapsible */}
                                         <div className="space-y-1.5">
@@ -496,7 +475,7 @@ export const Navbar = memo(({
                                     <button className="text-[10px] font-black uppercase tracking-widest hover:text-primary transition-colors">TikTok</button>
                                     <button className="text-[10px] font-black uppercase tracking-widest hover:text-primary transition-colors">Support</button>
                                 </div>
-                                <p className="text-[9px] font-black uppercase tracking-[0.4em] opacity-20 text-center">TARZIFY LUXURY &copy; 2026</p>
+                                <p className="text-[9px] font-black uppercase tracking-[0.4em] opacity-20 text-center">BALAKI ORGANIC &copy; 2026</p>
                             </div>
                         </motion.div>
                     </>

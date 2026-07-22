@@ -90,7 +90,7 @@ export const useCartStore = create<CartState>()(
                             product_id: item.id,
                             quantity: item.quantity,
                             variant_combo: variant_combo || {}
-                        }, { onConflict: 'user_id,product_id,variant_combo' }).then();
+                        }, { onConflict: 'user_id,product_id,variant_combo' }).then(() => {}, () => {});
                     }
                 }
             },
@@ -108,7 +108,7 @@ export const useCartStore = create<CartState>()(
                         .eq('user_id', user.id)
                         .eq('product_id', id)
                         .eq('variant_combo', JSON.stringify(variant_combo || {}))
-                        .then();
+                        .then(() => {}, () => {});
                 }
             },
             updateQuantity: (id, change, variant_combo) => {
@@ -142,18 +142,21 @@ export const useCartStore = create<CartState>()(
                         product_id: id,
                         quantity: newQuantity,
                         variant_combo: variant_combo || {}
-                    }, { onConflict: 'user_id,product_id,variant_combo' }).then();
+                    }, { onConflict: 'user_id,product_id,variant_combo' }).then(() => {}, () => {});
                 }
             },
             clearCart: () => {
                 set({ items: [], total: 0 });
+                try {
+                    localStorage.removeItem('cart-storage');
+                } catch (_e) {}
                 // Sync to DB if logged in
                 const user = (useAuthStore.getState() as any).user;
                 if (user) {
                     supabase.from('cart_items')
                         .delete()
                         .eq('user_id', user.id)
-                        .then();
+                        .then(() => {}, () => {});
                 }
             },
             setItems: (items) => set({

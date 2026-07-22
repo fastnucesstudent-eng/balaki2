@@ -95,7 +95,7 @@ export const useProductStore = create<ProductState>((set, get) => ({
         };
     },
 
-    fetchProducts: async (force = false, isAdmin = false) => {
+    fetchProducts: async (force = false, _isAdmin = false) => {
         const { lastFetched, loading } = get();
 
         // Only fetch if forced or if data is older than 5 minutes (or never fetched)
@@ -115,7 +115,7 @@ export const useProductStore = create<ProductState>((set, get) => ({
         try {
             const { data, error } = await supabase
                 .from('products')
-                .select('*, profiles!merchant_id(merchant_status, store_name, contact_number)')
+                .select('*')
                 .is('deleted_at', null)
                 .order('id', { ascending: true });
 
@@ -125,21 +125,13 @@ export const useProductStore = create<ProductState>((set, get) => ({
             if (error) throw error;
 
             const enriched = (data || [])
-                .filter((p: any) => {
-                    if (isAdmin) return true; // Admins see everything
-                    // Show admin products (no merchant_id) or approved merchant products
-                    if (!p.merchant_id) return true;
-                    return p.profiles?.merchant_status === 'approved';
-                })
                 .map((p: any) => {
-                    // Use database columns directly as they are more performant
-                    // Recalculation is only needed if columns are missing
                     return { 
                         ...p, 
                         avg_rating: Number(p.avg_rating) || 0, 
                         total_reviews: Number(p.total_reviews) || 0,
-                        merchant_name: p.profiles?.store_name || 'Tarzify',
-                        merchant_contact: p.profiles?.contact_number
+                        merchant_name: 'Balaki Organic',
+                        merchant_contact: '+92 301 4444980'
                     };
                 });
 
