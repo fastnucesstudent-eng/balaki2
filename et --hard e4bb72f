@@ -1,0 +1,77 @@
+[33me6b396d[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m, [m[1;31morigin/main[m[33m)[m HEAD@{0}: reset: moving to HEAD~1
+[33me4bb72f[m HEAD@{1}: commit: first commit
+[33me6b396d[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m, [m[1;31morigin/main[m[33m)[m HEAD@{2}: commit: fix: remove non-existent updated_at column from review upsert
+[33meff86ff[m HEAD@{3}: commit: fix: implement missing submit-review route and secure review flow with signatures
+[33m714c410[m HEAD@{4}: commit: feat: implement professional order delivered email and specific product review redirect
+[33m7b088c9[m HEAD@{5}: commit: feat: production readiness, security enhancements, and WhatsApp sharing fix
+[33m6e88b84[m HEAD@{6}: commit: perf: implement TanStack Query optimizations and network exposure
+[33m06bebef[m HEAD@{7}: commit: chore: save progress before performance optimization
+[33m6213146[m HEAD@{8}: commit: style: remove redundant top padding across all pages to align with base App layout
+[33mcb9f5e9[m HEAD@{9}: commit: chore: disable automatic Vercel deployments via GitHub
+[33m22f67c7[m HEAD@{10}: commit: feat: re-apply robust banner notifications for admin and merchants
+[33madcacd5[m HEAD@{11}: commit: feat: re-apply banking removal, category-based recommendations, and WhatsApp link fix
+[33m4214919[m HEAD@{12}: commit: Revert "fix: remove banking step from merchant registration, add category fallback, improve banner email notifications, filter recommendations by category"
+[33md8e159e[m HEAD@{13}: revert: Revert "fix: use consistent product URL in WhatsApp link"
+[33mee66675[m HEAD@{14}: reset: moving to ee666750e08be9fd5cc6a4f51fa49d6fb93d5fe4
+[33mab2188b[m HEAD@{15}: revert: Revert "fix: use consistent product URL in WhatsApp link"
+[33mee66675[m HEAD@{16}: commit: fix: Phase 2 AbortError resolution with global fetch and init delay
+[33m572bd29[m HEAD@{17}: commit: fix: implement auth initialization lock to resolve AbortError
+[33macd36b3[m HEAD@{18}: commit: fix: restore registration logic and resolve abort signals
+[33m920a3b5[m HEAD@{19}: commit: fix: resolve signal aborted error and add store name uniqueness check
+[33m3feaa25[m HEAD@{20}: commit: feat: global TanStack Query integration for retry logic and caching
+[33m8289cf9[m HEAD@{21}: commit: feat: implement TanStack Query for categories with retry logic
+[33mf165410[m HEAD@{22}: commit: fix: use consistent product URL in WhatsApp link
+[33ma2f47f4[m HEAD@{23}: commit: fix: remove banking step from merchant registration, add category fallback, improve banner email notifications, filter recommendations by category
+[33m9dbeaa9[m HEAD@{24}: commit: Hide TARZIFY name on mobile navbar, show logo only
+[33mb06288a[m HEAD@{25}: commit: fix: aggressively sanitize FRONTEND_URL of literal escaped newlines
+[33m142ba60[m HEAD@{26}: commit: fix: sanitize FRONTEND_URL to prevent trailing newlines from breaking GMC feed URLs
+[33mb5cbb10[m HEAD@{27}: commit: fix: add <g:adult>no</g:adult> tag to GMC feed to bypass automated adult content restrictions
+[33mf7d2f00[m HEAD@{28}: commit: fix: resolve GMC feed validation errors (encoded URLs, identifier_exists)
+[33m4b6b648[m HEAD@{29}: commit: chore: prepare for production (cors, layout, bugfixes)
+[33ma91245a[m HEAD@{30}: commit: feat: expand category mapping, fix seed endpoint, remove all confirm() dialogs
+[33m741fb7b[m HEAD@{31}: commit: Fix: resolve TypeScript errors and UI glitches for production deployment
+[33mcf90274[m HEAD@{32}: commit: feat: implement expandable mobile search bar on navbar to maximize screen space
+[33m0db3963[m HEAD@{33}: commit: style: convert absolute badges to a stacked flex container to prevent overlap on narrow mobile cards
+[33mc0bec52[m HEAD@{34}: commit: fix: inject frontend environment variables into github action runner to prevent capacitor white screen crash
+[33me76a056[m HEAD@{35}: commit: feat: replace generic capacitor app icon and splash screen with tarzify logo
+[33mcc3566a[m HEAD@{36}: commit: fix: change vite base path to relative to fix capacitor android white screen bug
+[33mf31524b[m HEAD@{37}: commit: fix: upgrade java to JDK 21 to meet latest capacitor gradle compilation constraints
+[33ma2a7795[m HEAD@{38}: commit: fix: upgrade node to 22 for capacitor cli requirements
+[33m52177a4[m HEAD@{39}: commit: fix: use legacy-peer-deps in build action to bypass react 19 eresolve
+[33m10d73d9[m HEAD@{40}: commit: chore: downgrade all github actions to v4 fixing upload-artifact v3 deprecation
+[33m3a2537c[m HEAD@{41}: commit: feat: initialize capacitor and set up android apk cloud build CI
+[33m9bd6d6f[m HEAD@{42}: commit: fix: sanitize smtp env vars with trim to prevent invalid getaddrinfo EBUSY errors
+[33m10dea83[m HEAD@{43}: commit: fix: add email address field to checkout for guests
+[33md9feaa0[m HEAD@{44}: commit: fix: await emails before res.json to prevent Vercel killing them, fix articles AbortError
+[33mbcbebf0[m HEAD@{45}: commit: fix: shipping 400 (remove fs.appendFileSync), cart variant_combo JSON.stringify
+[33mac1f8b5[m HEAD@{46}: commit: security: protect seed endpoint, prod morgan format
+[33ma8d6fab[m HEAD@{47}: commit: fix: checkout, guest tracking, sidebar close on mobile
+[33m853ffac[m HEAD@{48}: commit: Production deployment: update URLs, environment variables, and security settings
+[33mae06e48[m HEAD@{49}: commit: UI refinements, notification fixes, and optional article images
+[33m899a2bb[m HEAD@{50}: commit: Update complete website configuration & content changes
+[33meaf9602[m HEAD@{51}: commit: Enhance robots.txt with precise crawl instructions and spam crawler blocking
+[33m23cad08[m HEAD@{52}: commit: Update site.webmanifest with TARZIFY brand colors and description
+[33m9917b83[m HEAD@{53}: commit: Update sitemap.xml to include all dynamic product routes
+[33m595d775[m HEAD@{54}: commit: Fix product URL parsing to handle query parameters on redirect
+[33mb1e7d02[m HEAD@{55}: commit: Fix variant display across platform and implement merchant order notifications
+[33mb7d20bb[m HEAD@{56}: commit: Enhance product visibility, merchant dashboard, and automated email notifications
+[33m5485d3e[m HEAD@{57}: commit: feat: product enhancements, social proof ratings, variants UI fix, and production readiness
+[33m8b1a587[m HEAD@{58}: commit: chore: trigger backend redeploy - add deploy timestamp echo
+[33m648698a[m HEAD@{59}: commit: chore: trigger backend redeploy
+[33m0a777c4[m HEAD@{60}: commit: fix: use VITE_SITE_URL for email redirect, add production env var
+[33mb29f7fc[m HEAD@{61}: commit: Reduce product card size
+[33m7b40a2c[m HEAD@{62}: commit: Security hardening: Resolve harmful content warning, secure credentials, and update to HTTPS
+[33mff3672b[m HEAD@{63}: commit: Final cleanup: Master Schema, RLS recursion fix, UI refinements, and fresh production build
+[33mba7b5d8[m HEAD@{64}: commit: Hero section overhaul: 10:6:3 typography ratio, fixed y-clipping, L-to-R constrained shimmer, and successful production build
+[33m3fd0b06[m HEAD@{65}: commit: fix: robust SKU lookup to handle hyphens and ensure instant navigation
+[33m3ea0961[m HEAD@{66}: commit: feat: implement SKU-based product URLs and direct deep-linking
+[33m207dc03[m HEAD@{67}: commit: Fix CORS and clean up security rules
+[33m11dc812[m HEAD@{68}: commit: Fix CORS and Helmet for backend.tarzify.com
+[33me4f00e9[m HEAD@{69}: commit: Update API URL to backend.tarzify.com
+[33meecec7c[m HEAD@{70}: commit: Update API URL to api.tarzify.com
+[33mb437bc0[m HEAD@{71}: commit: Final v2.0 fixes: reviews, formatting, and Hostinger deploy
+[33m9ef72c2[m HEAD@{72}: commit: Fix reviews display, format comments, and add Hostinger deploy workflow
+[33mbd16565[m HEAD@{73}: commit: Update API URL for production
+[33m034fee8[m HEAD@{74}: commit: Tarzify v2.0: Comprehensive UI/UX polish, bug fixes, and backend hardening
+[33m591944e[m[33m ([m[1;31morigin/master[m[33m, [m[1;32mmaster[m[33m)[m HEAD@{75}: checkout: moving from master to main
+[33m591944e[m[33m ([m[1;31morigin/master[m[33m, [m[1;32mmaster[m[33m)[m H
