@@ -29,9 +29,7 @@
     "react-dom": "^19.2.0",
     "react-helmet-async": "^2.0.5",
     "tailwind-merge": "^3.4.0",
-    "zustand": "^5.0.11"
-  },
-  "devDependencies": {
+    "zustand": "^5.0.11",
     "@capacitor/assets": "^3.0.5",
     "@capacitor/cli": "^8.2.0",
     "@eslint/js": "^9.39.1",
@@ -49,5 +47,6 @@
     "typescript": "~5.9.3",
     "typescript-eslint": "^8.46.4",
     "vite": "^7.2.4"
-  }
+  },
+  "devDependencies": {}
 }
